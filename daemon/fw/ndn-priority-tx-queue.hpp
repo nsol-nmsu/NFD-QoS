@@ -17,94 +17,58 @@
  *
  */
 
-#ifndef QOS_QUEUE_H
-#define QOS_QUEUE_H
+#ifndef NDN_PRIORITY_TX_QUEUE_H
+#define NDN_PRIORITY_TX_QUEUE_H
 
 #include <iostream>
 #include <list>
+#include <limits>
 //#include "ns3/log.h"
+//#include <time.hpp>
+#include "ndn-qos-queue.hpp"
 
-#define QUEUE_SIZE 3
+#include <ctime> 
+#include <chrono>
+
+#define PACKET_SIZE 1024
+#define TOTAL_QUEUES 3
 
 using namespace std;
 
 //namespace nfd {
 //namespace fw {
 
-enum PacketType
-{
-    INTEREST = 0,
-    DATA,
-    NACK
-};
-
-struct QueueItem
-{
-    int wireEncode;
-    PacketType packetType;
-    int pitEntry;
-    int interface;
-};
-
-
-class QosQueue
+class NdnPriorityTxQueue : public QosQueue
 {
 
 public:
 
     //constructor
-    QosQueue ();
+    NdnPriorityTxQueue ();
 
-    //Set the queue size
-    void
-    SetMaxQueueSize (uint32_t size);
-
-    //Get queue size
-    uint32_t
-    GetMaxQueueSize () const;
-
-    void 
-    SetWeight (float weight);
-
-    float
-    GetWeight ();
-
-    void 
-    SetLastVirtualFinishTime (float lvft);
-
-    float
-    GetLastVirtualFinishTime ();
+    float 
+    GetFlowRate(QosQueue *queue);
 
     void
-    Enqueue (QueueItem item);
+    UpdateTime(int packet, QosQueue *queue);
 
-    QueueItem
-    Dequeue ();
+    QosQueue
+    SelectQueueToSend();
 
     void
-    DisplayQueue ();
+    DoEnqueue(QueueItem item);
 
-    //Check whether queue is empty
-    bool
-    IsEmpty () const;
-
-    QueueItem
-    GetFirstElement();
+    void
+    DoDequeue();
 
 public:
 
-    typedef std::list<QueueItem> Queue;
-    QueueItem m_item;
-
-private:
-
-    uint32_t m_maxQueueSize;
-    float m_weight;
-    float m_lastVirtualFinishTime;
-    Queue m_queue;
+    QosQueue m_highPriorityQueue;
+    QosQueue m_mediumPriorityQueue;
+    QosQueue m_lowPriorityQueue;
 };
 
 //}// namespace fw
 //}// namespace nfd
  
-#endif // QOS_QUEUE_H
+#endif // NDN_PRIORITY_TX_QUEUE_H

@@ -1,0 +1,115 @@
+/* -*- Mode: C++; c-file-style: "gnu"; indent-tabs-mode:nil -*- */
+/*
+ * Copyright (c) 2012 University of California, Los Angeles
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License version 2 as
+ * published by the Free Software Foundation;
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program; if not, write to the Free Software
+ * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+ *
+ */
+
+#include "ndn-priority-tx-queue.hpp"
+
+//NS_LOG_COMPONENT_DEFINE ("ndn.NdnPriorityTxQueue");
+
+//namespace nfd {
+//namespace fw {
+
+NdnPriorityTxQueue::NdnPriorityTxQueue()
+{
+    m_highPriorityQueue.SetWeight(3);
+    m_mediumPriorityQueue.SetWeight(2);
+    m_lowPriorityQueue.SetWeight(1);
+}
+
+float 
+NdnPriorityTxQueue::GetFlowRate(QosQueue *queue)
+{
+    float total_weight = m_highPriorityQueue.GetWeight() + m_lowPriorityQueue.GetWeight() + m_mediumPriorityQueue.GetWeight();
+    float flowRate = queue->GetWeight() / total_weight;
+
+    return flowRate;
+}
+
+void
+NdnPriorityTxQueue::UpdateTime(int packet, QosQueue *queue)
+{
+    //TODO: Change type of packet from int to Block.
+    //uint64_t current_time = Now().GetMilliSeconds();
+    float current_time = 3;//TODO:Remove this and use above line
+    float virtualStartTime = std::max(current_time, queue->GetLastVirtualFinishTime());
+
+    //TODO:Get the size of packet/wireEncode instead of PACKET_SIZE
+    float virtualFinishTime = virtualStartTime + (PACKET_SIZE * (1 - GetFlowRate(queue)));
+    queue->SetLastVirtualFinishTime( virtualFinishTime );
+}
+
+QosQueue
+NdnPriorityTxQueue::SelectQueueToSend()
+{
+    QosQueue selected_queue = m_highPriorityQueue;
+    float minVirtualFinishTime = std::numeric_limits<float>::max();
+
+    if(m_highPriorityQueue.IsEmpty() == false )
+    {
+        minVirtualFinishTime = m_highPriorityQueue.GetLastVirtualFinishTime();
+        selected_queue = m_highPriorityQueue;
+    }
+
+    if(m_mediumPriorityQueue.IsEmpty() == false )
+    {
+        std::cout << "m_mediumPriorityQueue.GetLastVirtualFinishTime(): "<<m_mediumPriorityQueue.GetLastVirtualFinishTime() << std::endl;
+        if(minVirtualFinishTime > m_mediumPriorityQueue.GetLastVirtualFinishTime())
+        {
+            minVirtualFinishTime = m_mediumPriorityQueue.GetLastVirtualFinishTime();
+            selected_queue = m_mediumPriorityQueue;
+        }
+    }
+
+    if(m_lowPriorityQueue.IsEmpty() == false )
+    {
+        if(minVirtualFinishTime > m_lowPriorityQueue.GetLastVirtualFinishTime())
+        {
+            minVirtualFinishTime = m_lowPriorityQueue.GetLastVirtualFinishTime();
+            selected_queue = m_lowPriorityQueue;
+        }
+    }
+
+    return selected_queue;
+}
+
+void
+NdnPriorityTxQueue::DoEnqueue(QueueItem item)
+{
+    //TODO:Select queue based on dscp value. For now use medium priority
+    QosQueue *queue = &m_mediumPriorityQueue;
+
+    queue->Enqueue(item);
+    UpdateTime(item.wireEncode, queue);
+}
+
+void
+NdnPriorityTxQueue::DoDequeue()
+{
+    if((!m_highPriorityQueue.IsEmpty()) || (!m_mediumPriorityQueue.IsEmpty()) || (!m_lowPriorityQueue.IsEmpty()))
+    {
+        QosQueue queue = SelectQueueToSend();
+        QueueItem item = queue.Dequeue();
+    } else
+    {
+        std::cout << "DoDequeue failed. All queues are empty !!!!" << std::endl;
+    }
+}
+
+//} // namespace ndn
+//} // namespace ns3
+

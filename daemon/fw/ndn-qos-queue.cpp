@@ -19,79 +19,138 @@
 
 #include "ndn-qos-queue.hpp"
 
-#include "ns3/log.h"
-#include "ns3/simulator.h"
-#include "ns3/assert.h"
+//NS_LOG_COMPONENT_DEFINE ("ndn.QosQueue");
 
-using namespace std;
-using namespace boost;
+//namespace nfd {
+//namespace fw {
 
-NS_LOG_COMPONENT_DEFINE ("ndn.QosQueue");
+QosQueue::QosQueue()
+    : m_maxQueueSize (QUEUE_SIZE),
+    m_weight(0.0),
+    m_lastVirtualFinishTime(0.0)
+{
+}
 
-namespace nfd {
+void
+QosQueue::SetMaxQueueSize (uint32_t size)
+{
+    m_maxQueueSize = size;
+}
 
-    namespace fw {
+uint32_t
+QosQueue::GetMaxQueueSize () const
+{
+    return m_maxQueueSize;
+}
 
-        QosQueue::QosQueue ()
-            : m_maxQueueSize (QUEUE_SIZE), 
-            m_iterator (m_queue.end())
-        {
-        }
+void
+QosQueue::SetWeight (float weight)
+{
+    m_weight = weight;
+}
 
-        void
-        QosQueue::SetMaxQueueSize (uint32_t size)
-        {
-            m_maxQueueSize = size;
-        }
+float
+QosQueue::GetWeight ()
+{
+    return m_weight;
+}
 
-        uint32_t
-        QosQueue::GetMaxQueueSize () const
-        {
-            return m_maxQueueSize;
-        }
+void
+QosQueue::SetLastVirtualFinishTime (float lvft)
+{
+    m_lastVirtualFinishTime = lvft;
+}
 
+float
+QosQueue::GetLastVirtualFinishTime()
+{
+    return m_lastVirtualFinishTime;
+}
 
-        bool
-        QosQueue::Enqueue (shared_ptr<Interest> queEntry)
-        {
-            if (m_maxQueueSize > m_queue.size())
+void
+QosQueue::Enqueue (QueueItem item)
+{
+    if (m_queue.size() < GetMaxQueueSize())
+    {
+        std::cout << "Enqueing Item: "<< endl;
+        std::cout << "\tWireWncode: " << item.wireEncode;
+        std::cout << "\tpacketType: " << item.packetType;
+        std::cout << "\tpitEntry: " << item.pitEntry;
+        std::cout << "\tinterface: " << item.interface << endl;
+
+        m_queue.push_back(item);
+
+    } else
+    {
+        std::cout << "Enqueue failed. Queue full!!!!" << endl;
+    }
+}
+
+QueueItem
+QosQueue::Dequeue ()
+{
+    m_item = {};
+    if (!m_queue.empty())
+    {
+        m_item = m_queue.front();
+        m_queue.pop_front();
+
+        cout << "Dequeing item: " << std::endl;
+        std::cout << "\tWireWncode: " << m_item.wireEncode;
+        std::cout << "\tpacketType: " << m_item.packetType;
+        std::cout << "\tpitEntry: " << m_item.pitEntry;
+        std::cout << "\tinterface: " << m_item.interface << std::endl;
+
+    } else
+    {
+        cout << "Dequeue failed. Queue is empty!!!" << endl;
+    }
+    return m_item;
+}
+
+void 
+QosQueue::DisplayQueue ()
+{
+    std::cout << "QosQueue::DisplayQueue()" << std::endl;
+    if (!m_queue.empty())
+    {
+            std::cout <<"Queue Items: "<< std::endl;
+            for (auto it = m_queue.cbegin(); it != m_queue.cend(); ++it)
             {
-                m_queue.push_back (queEntry);
-                return true;
+                std::cout << "\tWireWncode: " << it->wireEncode;
+                std::cout << "\tpacketType: " << it->packetType;
+                std::cout << "\tpitEntry: " << it->pitEntry;
+                std::cout << "\tinterface: " << it->interface << std::endl;
             }
-            else
-            {
-                cout << "Queue is full";
-                return false;
-            }
-        }
+    } else
+    {
+        std::cout << "Queue is empty!!!" << std::endl;
+    }
+}
+
+bool
+QosQueue::IsEmpty () const
+{
+    return m_queue.empty ();
+}
+
+QueueItem
+QosQueue::GetFirstElement()
+{
+    m_item = {};
+
+    if (!m_queue.empty())
+    {
+        m_item = m_queue.front();
+    } else
+    {
+        std::cout << "Queue is Empty !!!!" << endl;
+    }
+
+    return m_item;
+}
 
 
-        shared_ptr<Interest>
-        QosQueue::Dequeue ()
-        {
-            if ( m_queue.empty () )
-            {
-                //queue is empty
-                return 0;
-            }
-            else
-            {
-                //TODO: is auto is fine or Ptr<queItem::Interest> temp is required?
-                shared_ptr<Interest> temp = m_queue.front (); 
-                m_queue.pop_front ();
-
-                return temp;
-            }
-        }
-
-        bool
-        QosQueue::IsEmpty () const
-        {
-            return m_queue.empty ();
-        }
-
-    } // namespace ndn
-} // namespace ns3
-
+//} // namespace ndn
+//} // namespace ns3
 

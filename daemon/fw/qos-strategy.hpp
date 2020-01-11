@@ -39,6 +39,15 @@
 namespace nfd {
 namespace fw {
 
+/** \brief indicates the state of a transport
+ */
+enum class PacketType {
+  INTEREST = 0,
+  DATA,
+  NACK
+};
+
+
 /** \brief a forwarding strategy that forwards Interest to all FIB nexthops
  */
 class QosStrategy : public Strategy
@@ -58,6 +67,22 @@ public:
   void
   afterReceiveNack(const Face& inFace, const lp::Nack& nack,
                    const shared_ptr<pit::Entry>& pitEntry) override;
+
+  void
+  afterReceiveData(const shared_ptr<pit::Entry>& pitEntry,
+                   const Face& inFace, const Data& data);
+
+  void
+  prioritySendData(const shared_ptr<pit::Entry>& pitEntry,
+                   const Face& inFace, const Data& data);
+
+  void
+  prioritySendNack(const shared_ptr<pit::Entry>& pitEntry,
+                   const Face& inFace, const lp::Nack& nack);
+
+  void
+  prioritySendInterest(const shared_ptr<pit::Entry>& pitEntry,
+                       const Face& inFace, const Interest& interest);
 
 private:
   friend ProcessNackTraits<QosStrategy>;

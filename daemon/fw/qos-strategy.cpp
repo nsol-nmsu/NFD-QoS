@@ -90,6 +90,151 @@ void
 QosStrategy::afterReceiveInterest(const Face& inFace, const Interest& interest,
                                         const shared_ptr<pit::Entry>& pitEntry)
 {
+    std::cout << "***Interest name: " << interest.getName() << std::endl;
+
+    std::string s = interest.getName().toUri();
+    //TODO: Remember to adjust dscp value when namespace is changed.
+    uint32_t dscp_value = std::stoi(s.substr (13,2));
+
+    if(dscp_value >= 1 && dscp_value <= 20)
+    {
+        std::cout << "Dscp value: " << dscp_value << " **** High priority" << std::endl;
+        //TODO:Enqueue Interest
+
+    } else if(dscp_value >= 21 && dscp_value <= 40)
+    {
+        std::cout << "Dscp value: " << dscp_value << " **** Medium priority" << std::endl;
+        //TODO:Enqueue Interest
+
+    }else if(dscp_value >= 41 && dscp_value <= 64)
+    {
+        std::cout << "Dscp value: " << dscp_value << " **** Low priority" << std::endl;
+        //TODO:Enqueue Interest
+
+    } else
+    {
+        std::cout << "Incorrect dscp value !! Enqueue failed !!!! ";
+    }
+
+    //TODO: Remove later
+    prioritySendInterest(pitEntry, inFace, interest);
+    //prioritySend();
+
+}
+
+void
+QosStrategy::afterReceiveNack(const Face& inFace, const lp::Nack& nack,
+                                    const shared_ptr<pit::Entry>& pitEntry)
+{
+    std::cout << "***Nack name: " << nack.getInterest().getName() << std::endl;
+
+    std::string s = nack.getInterest().getName().toUri();
+    //TODO: Remember to adjust dscp value when namespace is changed.
+    uint32_t dscp_value = std::stoi(s.substr (13,2));
+
+    if(dscp_value >= 1 && dscp_value <= 20)
+    {
+        std::cout << "Dscp value: " << dscp_value << " **** High priority" << std::endl;
+        //TODO:Enqueue Nack
+
+    } else if(dscp_value >= 21 && dscp_value <= 40)
+    {
+        std::cout << "Dscp value: " << dscp_value << " **** Medium priority" << std::endl;
+        //TODO:Enqueue Nack
+
+    }else if(dscp_value >= 41 && dscp_value <= 64)
+    {
+        std::cout << "Dscp value: " << dscp_value << " **** Low priority" << std::endl;
+        //TODO:Enqueue Nack
+
+    } else
+    {
+        std::cout << "Incorrect dscp value !! Enqueue failed !!!! ";
+    }
+
+    //TODO: Remove later
+    prioritySendNack(pitEntry, inFace, nack);
+    //prioritySend();
+
+}
+
+void
+QosStrategy::afterReceiveData(const shared_ptr<pit::Entry>& pitEntry,
+                           const Face& inFace, const Data& data)
+{
+  NFD_LOG_DEBUG("afterReceiveData pitEntry=" << pitEntry->getName() <<
+          " inFace=" << inFace.getId() << " data=" << data.getName());
+  this->beforeSatisfyInterest(pitEntry, inFace, data);
+
+  std::cout << "***Data name: " << data.getName() << std::endl;
+  std::string s = data.getName().toUri();
+  //TODO: Remember to adjust dscp value when namespace is changed.
+  uint32_t dscp_value = std::stoi(s.substr (13,2));
+
+  if(dscp_value >= 1 && dscp_value <= 20)
+  {
+      std::cout << "Dscp value: " << dscp_value << " **** High priority" << std::endl;
+      //TODO:EnqueueData
+
+  } else if(dscp_value >= 21 && dscp_value <= 40)
+  {
+      std::cout << "Dscp value: " << dscp_value << " **** Medium priority" << std::endl;
+      //TODO:EnqueueData
+
+  }else if(dscp_value >= 41 && dscp_value <= 64)
+  {
+      std::cout << "Dscp value: " << dscp_value << " **** Low priority" << std::endl;
+      //TODO:EnqueueData
+
+  } else
+  {
+      std::cout << "Incorrect dscp value !! Enqueue failed !!!! ";
+  }
+
+  //TODO: Remove later
+  prioritySendData(pitEntry, inFace, data);
+  //prioritySend();
+
+}
+
+void
+prioritySend()
+{
+#if 0
+    //TODO: Dequeue using WFQ
+    switch(type)
+    {
+        case INTEREST:
+            prioritySendInterest(pitEntry, inFace, interest);
+            break;
+        case DATA:
+            prioritySendData(pitEntry, inFace, data);
+            break;
+        case NACK:
+            prioritySendNack(pitEntry, inFace, nack);
+            break;
+    }
+#endif
+}
+
+void
+QosStrategy::prioritySendData(const shared_ptr<pit::Entry>& pitEntry,
+                            const Face& inFace, const Data& data)
+{
+  this->sendDataToAll(pitEntry, inFace, data);
+}
+
+void
+QosStrategy::prioritySendNack(const shared_ptr<pit::Entry>& pitEntry,
+                            const Face& inFace, const lp::Nack& nack)
+{
+  this->processNack(inFace, nack, pitEntry);
+}
+
+void
+QosStrategy::prioritySendInterest(const shared_ptr<pit::Entry>& pitEntry,
+                            const Face& inFace, const Interest& interest)
+{
   const fib::Entry& fibEntry = this->lookupFib(*pitEntry);
   const fib::NextHopList& nexthops = fibEntry.getNextHops();
 
@@ -100,28 +245,6 @@ QosStrategy::afterReceiveInterest(const Face& inFace, const Interest& interest,
   std::cout << "\nGOT INTEREST in QoS strategy, tokens = ..........." << tb.GetTokens() << std::endl;
   double consumed = tb.ConsumeTokens(30.0);
   std::cout << "CONSUME in QoS strategy, tokens = ..........." << consumed << std::endl;
-
-#if 0
-  //Get all the nodes and associated links in the topology
-  for (ns3::NodeList::Iterator node = ns3::NodeList::Begin(); node != ns3::NodeList::End(); node++) {
-
-      ns3::Ptr<ns3::ndn::GlobalRouter> source = (*node)->GetObject<ns3::ndn::GlobalRouter>();
-
-      if (source == 0) {
-          std::cout << "\nError: GlobalRouter object is empty!!";
-          //continue;
-      }
-      else{
-          std::cout << "\nNode: " << (*node)->GetId();
-          ns3::ndn::GlobalRouter::IncidencyList& graphEdges = source->GetIncidencies();
-
-          for (const auto& graphEdge : graphEdges) {
-              int link = get<2>(graphEdge)->GetObject<ns3::Node>()->GetId();
-              std::cout << "\n\tLink: " << link << std::endl;
-          }
-      }
-  }
-#endif
 
   for (const auto& nexthop : nexthops) {
     Face& outFace = nexthop.getFace();
@@ -159,13 +282,6 @@ QosStrategy::afterReceiveInterest(const Face& inFace, const Interest& interest,
 
     this->rejectPendingInterest(pitEntry);
   }
-}
-
-void
-QosStrategy::afterReceiveNack(const Face& inFace, const lp::Nack& nack,
-                                    const shared_ptr<pit::Entry>& pitEntry)
-{
-  this->processNack(inFace, nack, pitEntry);
 }
 
 } // namespace fw
