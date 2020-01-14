@@ -20,19 +20,22 @@
 #ifndef QOS_QUEUE_H
 #define QOS_QUEUE_H
 
-#include <iostream>
 #include <list>
-//#include "ns3/log.h"
+#include <ndn-cxx/encoding/block.hpp>
+#include <NFD/daemon/table/pit-entry.hpp>
+#include <NFD/daemon/face/face.hpp>
+#include "ns3/log.h"
 
-#define QUEUE_SIZE 3
+#define QUEUE_SIZE 5
 
 using namespace std;
 
-//namespace nfd {
-//namespace fw {
+namespace nfd {
+namespace fw {
 
-enum PacketType
+enum QosPacketType
 {
+    INVALID = -1,
     INTEREST = 0,
     DATA,
     NACK
@@ -40,10 +43,16 @@ enum PacketType
 
 struct QueueItem
 {
-    int wireEncode;
-    PacketType packetType;
-    int pitEntry;
-    int interface;
+    ndn::Block wireEncode;
+    QosPacketType packetType;
+    const shared_ptr<pit::Entry>* pitEntry;
+    const Face* interface;
+    QueueItem() : wireEncode(0),
+                  packetType(INVALID),
+                  pitEntry(NULL),
+                  interface(NULL)
+        {
+        }
 };
 
 
@@ -94,7 +103,7 @@ public:
 public:
 
     typedef std::list<QueueItem> Queue;
-    QueueItem m_item;
+    //struct QueueItem m_item;
 
 private:
 
@@ -104,7 +113,7 @@ private:
     Queue m_queue;
 };
 
-//}// namespace fw
-//}// namespace nfd
+}// namespace fw
+}// namespace nfd
  
 #endif // QOS_QUEUE_H

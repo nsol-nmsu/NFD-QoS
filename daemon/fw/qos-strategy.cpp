@@ -90,131 +90,100 @@ void
 QosStrategy::afterReceiveInterest(const Face& inFace, const Interest& interest,
                                         const shared_ptr<pit::Entry>& pitEntry)
 {
+    struct QueueItem item;
+
     std::cout << "***Interest name: " << interest.getName() << std::endl;
 
     std::string s = interest.getName().toUri();
     //TODO: Remember to adjust dscp value when namespace is changed.
     uint32_t dscp_value = std::stoi(s.substr (13,2));
 
-    if(dscp_value >= 1 && dscp_value <= 20)
-    {
-        std::cout << "Dscp value: " << dscp_value << " **** High priority" << std::endl;
-        //TODO:Enqueue Interest
+    item.wireEncode = interest.wireEncode();
+    item.packetType = INTEREST;
+    item.pitEntry = &pitEntry;
+    item.interface = &inFace;
 
-    } else if(dscp_value >= 21 && dscp_value <= 40)
-    {
-        std::cout << "Dscp value: " << dscp_value << " **** Medium priority" << std::endl;
-        //TODO:Enqueue Interest
-
-    }else if(dscp_value >= 41 && dscp_value <= 64)
-    {
-        std::cout << "Dscp value: " << dscp_value << " **** Low priority" << std::endl;
-        //TODO:Enqueue Interest
-
-    } else
-    {
-        std::cout << "Incorrect dscp value !! Enqueue failed !!!! ";
-    }
-
-    //TODO: Remove later
-    prioritySendInterest(pitEntry, inFace, interest);
-    //prioritySend();
-
+    m_tx_queue.DoEnqueue(item, dscp_value);
+    prioritySend();
 }
 
 void
 QosStrategy::afterReceiveNack(const Face& inFace, const lp::Nack& nack,
                                     const shared_ptr<pit::Entry>& pitEntry)
 {
+    struct QueueItem item;
+
     std::cout << "***Nack name: " << nack.getInterest().getName() << std::endl;
 
     std::string s = nack.getInterest().getName().toUri();
     //TODO: Remember to adjust dscp value when namespace is changed.
     uint32_t dscp_value = std::stoi(s.substr (13,2));
 
-    if(dscp_value >= 1 && dscp_value <= 20)
-    {
-        std::cout << "Dscp value: " << dscp_value << " **** High priority" << std::endl;
-        //TODO:Enqueue Nack
+    item.wireEncode = nack.getInterest().wireEncode();
+    item.packetType = NACK;
+    item.pitEntry = &pitEntry;
+    item.interface = &inFace;
 
-    } else if(dscp_value >= 21 && dscp_value <= 40)
-    {
-        std::cout << "Dscp value: " << dscp_value << " **** Medium priority" << std::endl;
-        //TODO:Enqueue Nack
-
-    }else if(dscp_value >= 41 && dscp_value <= 64)
-    {
-        std::cout << "Dscp value: " << dscp_value << " **** Low priority" << std::endl;
-        //TODO:Enqueue Nack
-
-    } else
-    {
-        std::cout << "Incorrect dscp value !! Enqueue failed !!!! ";
-    }
-
-    //TODO: Remove later
-    prioritySendNack(pitEntry, inFace, nack);
-    //prioritySend();
-
+    m_tx_queue.DoEnqueue(item, dscp_value);
+    prioritySend();
 }
 
 void
 QosStrategy::afterReceiveData(const shared_ptr<pit::Entry>& pitEntry,
                            const Face& inFace, const Data& data)
 {
-  NFD_LOG_DEBUG("afterReceiveData pitEntry=" << pitEntry->getName() <<
-          " inFace=" << inFace.getId() << " data=" << data.getName());
-  this->beforeSatisfyInterest(pitEntry, inFace, data);
+    struct QueueItem item;
 
-  std::cout << "***Data name: " << data.getName() << std::endl;
-  std::string s = data.getName().toUri();
-  //TODO: Remember to adjust dscp value when namespace is changed.
-  uint32_t dscp_value = std::stoi(s.substr (13,2));
+    NFD_LOG_DEBUG("afterReceiveData pitEntry=" << pitEntry->getName() <<
+            " inFace=" << inFace.getId() << " data=" << data.getName());
+    std::cout << "***Data name: " << data.getName() << std::endl;
 
-  if(dscp_value >= 1 && dscp_value <= 20)
-  {
-      std::cout << "Dscp value: " << dscp_value << " **** High priority" << std::endl;
-      //TODO:EnqueueData
+    this->beforeSatisfyInterest(pitEntry, inFace, data);
+    std::string s = data.getName().toUri();
+    //TODO: Remember to adjust dscp value when namespace is changed.
+    uint32_t dscp_value = std::stoi(s.substr (13,2));
 
-  } else if(dscp_value >= 21 && dscp_value <= 40)
-  {
-      std::cout << "Dscp value: " << dscp_value << " **** Medium priority" << std::endl;
-      //TODO:EnqueueData
+    item.wireEncode = data.wireEncode();
+    item.packetType = DATA;
+    item.pitEntry = &pitEntry;
+    item.interface = &inFace;
 
-  }else if(dscp_value >= 41 && dscp_value <= 64)
-  {
-      std::cout << "Dscp value: " << dscp_value << " **** Low priority" << std::endl;
-      //TODO:EnqueueData
-
-  } else
-  {
-      std::cout << "Incorrect dscp value !! Enqueue failed !!!! ";
-  }
-
-  //TODO: Remove later
-  prioritySendData(pitEntry, inFace, data);
-  //prioritySend();
-
+    m_tx_queue.DoEnqueue(item, dscp_value);
+    prioritySend();
 }
 
 void
-prioritySend()
+QosStrategy::prioritySend()
 {
-#if 0
-    //TODO: Dequeue using WFQ
-    switch(type)
+    Interest interest;
+    Data data;
+    lp::Nack nack;
+
+    struct QueueItem item = m_tx_queue.DoDequeue();
+    interest.wireDecode( item.wireEncode );
+    const Interest interest1 = interest;
+
+    switch(item.packetType)
     {
         case INTEREST:
-            prioritySendInterest(pitEntry, inFace, interest);
+            interest.wireDecode( item.wireEncode );
+            prioritySendInterest(*(item.pitEntry), *(item.interface), interest);
             break;
+
         case DATA:
-            prioritySendData(pitEntry, inFace, data);
+            data.wireDecode( item.wireEncode );
+            prioritySendData(*(item.pitEntry), *(item.interface), data);
             break;
+
         case NACK:
-            prioritySendNack(pitEntry, inFace, nack);
+            nack = lp::Nack(interest1);
+            prioritySendNack(*(item.pitEntry), *(item.interface), nack);
+            break;
+
+        default:
+            std::cout<<"prioritySend(Invalid Type)\n";
             break;
     }
-#endif
 }
 
 void

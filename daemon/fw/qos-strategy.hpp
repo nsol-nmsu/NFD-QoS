@@ -34,6 +34,7 @@
 #include "ns3/node.h"
 #include "ns3/ndnSIM/model/ndn-global-router.hpp"
 #include "ns3/ndnSIM/helper/boost-graph-ndn-global-routing-helper.hpp"
+#include "ndn-priority-tx-queue.hpp"
 
 
 namespace nfd {
@@ -84,7 +85,12 @@ public:
   prioritySendInterest(const shared_ptr<pit::Entry>& pitEntry,
                        const Face& inFace, const Interest& interest);
 
+  void
+  prioritySend();
+
 private:
+
+  NdnPriorityTxQueue m_tx_queue;
   friend ProcessNackTraits<QosStrategy>;
   RetxSuppressionExponential m_retxSuppression;
 

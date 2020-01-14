@@ -19,10 +19,10 @@
 
 #include "ndn-qos-queue.hpp"
 
-//NS_LOG_COMPONENT_DEFINE ("ndn.QosQueue");
+NS_LOG_COMPONENT_DEFINE ("ndn.QosQueue");
 
-//namespace nfd {
-//namespace fw {
+namespace nfd {
+namespace fw {
 
 QosQueue::QosQueue()
     : m_maxQueueSize (QUEUE_SIZE),
@@ -76,7 +76,7 @@ QosQueue::Enqueue (QueueItem item)
         std::cout << "\tWireWncode: " << item.wireEncode;
         std::cout << "\tpacketType: " << item.packetType;
         std::cout << "\tpitEntry: " << item.pitEntry;
-        std::cout << "\tinterface: " << item.interface << endl;
+        std::cout << "\tinterface: " << item.interface->getId()  << endl;
 
         m_queue.push_back(item);
 
@@ -89,7 +89,7 @@ QosQueue::Enqueue (QueueItem item)
 QueueItem
 QosQueue::Dequeue ()
 {
-    m_item = {};
+    struct QueueItem m_item;
     if (!m_queue.empty())
     {
         m_item = m_queue.front();
@@ -99,7 +99,7 @@ QosQueue::Dequeue ()
         std::cout << "\tWireWncode: " << m_item.wireEncode;
         std::cout << "\tpacketType: " << m_item.packetType;
         std::cout << "\tpitEntry: " << m_item.pitEntry;
-        std::cout << "\tinterface: " << m_item.interface << std::endl;
+        std::cout << "\tinterface: " << m_item.interface->getId() << std::endl;
 
     } else
     {
@@ -120,7 +120,7 @@ QosQueue::DisplayQueue ()
                 std::cout << "\tWireWncode: " << it->wireEncode;
                 std::cout << "\tpacketType: " << it->packetType;
                 std::cout << "\tpitEntry: " << it->pitEntry;
-                std::cout << "\tinterface: " << it->interface << std::endl;
+                std::cout << "\tinterface: " << it->interface->getId() << std::endl;
             }
     } else
     {
@@ -137,7 +137,7 @@ QosQueue::IsEmpty () const
 QueueItem
 QosQueue::GetFirstElement()
 {
-    m_item = {};
+    struct QueueItem m_item;
 
     if (!m_queue.empty())
     {
@@ -151,6 +151,6 @@ QosQueue::GetFirstElement()
 }
 
 
-//} // namespace ndn
-//} // namespace ns3
+} // namespace ndn
+} // namespace ns3
 

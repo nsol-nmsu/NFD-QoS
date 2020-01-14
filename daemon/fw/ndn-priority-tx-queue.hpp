@@ -35,10 +35,10 @@
 
 using namespace std;
 
-//namespace nfd {
-//namespace fw {
+namespace nfd {
+namespace fw {
 
-class NdnPriorityTxQueue : public QosQueue
+class NdnPriorityTxQueue : private QosQueue
 {
 
 public:
@@ -50,15 +50,15 @@ public:
     GetFlowRate(QosQueue *queue);
 
     void
-    UpdateTime(int packet, QosQueue *queue);
+    UpdateTime(ndn::Block packet, QosQueue *queue);
 
-    QosQueue
+    QosQueue*
     SelectQueueToSend();
 
     void
-    DoEnqueue(QueueItem item);
+    DoEnqueue(QueueItem item, uint32_t dscp_value );
 
-    void
+    QueueItem
     DoDequeue();
 
 public:
@@ -68,7 +68,7 @@ public:
     QosQueue m_lowPriorityQueue;
 };
 
-//}// namespace fw
-//}// namespace nfd
+}// namespace fw
+}// namespace nfd
  
 #endif // NDN_PRIORITY_TX_QUEUE_H

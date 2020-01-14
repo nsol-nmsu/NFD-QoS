@@ -21,8 +21,8 @@
 
 //NS_LOG_COMPONENT_DEFINE ("ndn.NdnPriorityTxQueue");
 
-//namespace nfd {
-//namespace fw {
+namespace nfd {
+namespace fw {
 
 NdnPriorityTxQueue::NdnPriorityTxQueue()
 {
@@ -41,9 +41,8 @@ NdnPriorityTxQueue::GetFlowRate(QosQueue *queue)
 }
 
 void
-NdnPriorityTxQueue::UpdateTime(int packet, QosQueue *queue)
+NdnPriorityTxQueue::UpdateTime(ndn::Block packet, QosQueue *queue)
 {
-    //TODO: Change type of packet from int to Block.
     //uint64_t current_time = Now().GetMilliSeconds();
     float current_time = 3;//TODO:Remove this and use above line
     float virtualStartTime = std::max(current_time, queue->GetLastVirtualFinishTime());
@@ -53,16 +52,16 @@ NdnPriorityTxQueue::UpdateTime(int packet, QosQueue *queue)
     queue->SetLastVirtualFinishTime( virtualFinishTime );
 }
 
-QosQueue
+QosQueue*
 NdnPriorityTxQueue::SelectQueueToSend()
 {
-    QosQueue selected_queue = m_highPriorityQueue;
+    QosQueue* selected_queue = &m_highPriorityQueue;
     float minVirtualFinishTime = std::numeric_limits<float>::max();
 
     if(m_highPriorityQueue.IsEmpty() == false )
     {
         minVirtualFinishTime = m_highPriorityQueue.GetLastVirtualFinishTime();
-        selected_queue = m_highPriorityQueue;
+        selected_queue = &m_highPriorityQueue;
     }
 
     if(m_mediumPriorityQueue.IsEmpty() == false )
@@ -71,7 +70,7 @@ NdnPriorityTxQueue::SelectQueueToSend()
         if(minVirtualFinishTime > m_mediumPriorityQueue.GetLastVirtualFinishTime())
         {
             minVirtualFinishTime = m_mediumPriorityQueue.GetLastVirtualFinishTime();
-            selected_queue = m_mediumPriorityQueue;
+            selected_queue = &m_mediumPriorityQueue;
         }
     }
 
@@ -80,7 +79,7 @@ NdnPriorityTxQueue::SelectQueueToSend()
         if(minVirtualFinishTime > m_lowPriorityQueue.GetLastVirtualFinishTime())
         {
             minVirtualFinishTime = m_lowPriorityQueue.GetLastVirtualFinishTime();
-            selected_queue = m_lowPriorityQueue;
+            selected_queue = &m_lowPriorityQueue;
         }
     }
 
@@ -88,28 +87,52 @@ NdnPriorityTxQueue::SelectQueueToSend()
 }
 
 void
-NdnPriorityTxQueue::DoEnqueue(QueueItem item)
+NdnPriorityTxQueue::DoEnqueue(QueueItem item, uint32_t dscp_value)
 {
-    //TODO:Select queue based on dscp value. For now use medium priority
-    QosQueue *queue = &m_mediumPriorityQueue;
+    QosQueue *queue;
+
+    if(dscp_value >= 1 && dscp_value <= 20)
+    {
+        std::cout << "Dscp value: " << dscp_value << " **** High priority" << std::endl;
+        queue = &m_highPriorityQueue;
+
+    } else if(dscp_value >= 21 && dscp_value <= 40)
+    {
+        std::cout << "Dscp value: " << dscp_value << " **** Medium priority" << std::endl;
+        queue = &m_mediumPriorityQueue;
+
+    }else if(dscp_value >= 41 && dscp_value <= 64)
+    {
+        std::cout << "Dscp value: " << dscp_value << " **** Low priority" << std::endl;
+        queue = &m_lowPriorityQueue;
+
+    } else
+    {
+        std::cout << "Incorrect dscp value !! Enqueue failed !!!! ";
+    }
 
     queue->Enqueue(item);
     UpdateTime(item.wireEncode, queue);
 }
 
-void
+QueueItem
 NdnPriorityTxQueue::DoDequeue()
 {
+    QueueItem item;
+
     if((!m_highPriorityQueue.IsEmpty()) || (!m_mediumPriorityQueue.IsEmpty()) || (!m_lowPriorityQueue.IsEmpty()))
     {
-        QosQueue queue = SelectQueueToSend();
-        QueueItem item = queue.Dequeue();
+        QosQueue* queue = SelectQueueToSend();
+        item = queue->Dequeue();
+
     } else
     {
         std::cout << "DoDequeue failed. All queues are empty !!!!" << std::endl;
     }
+
+    return item;
 }
 
-//} // namespace ndn
-//} // namespace ns3
+} // namespace ndn
+} // namespace ns3
 
