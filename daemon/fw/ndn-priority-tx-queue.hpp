@@ -20,11 +20,9 @@
 #ifndef NDN_PRIORITY_TX_QUEUE_H
 #define NDN_PRIORITY_TX_QUEUE_H
 
-#include <iostream>
 #include <list>
 #include <limits>
-//#include "ns3/log.h"
-//#include <time.hpp>
+#include "ns3/log.h"
 #include "ndn-qos-queue.hpp"
 
 #include <ctime> 

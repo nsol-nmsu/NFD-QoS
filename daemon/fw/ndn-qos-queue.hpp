@@ -79,9 +79,9 @@ public:
     GetWeight ();
 
     void 
-    SetLastVirtualFinishTime (float lvft);
+    SetLastVirtualFinishTime (uint64_t lvft);
 
-    float
+    uint64_t
     GetLastVirtualFinishTime ();
 
     void
@@ -103,13 +103,12 @@ public:
 public:
 
     typedef std::list<QueueItem> Queue;
-    //struct QueueItem m_item;
 
 private:
 
     uint32_t m_maxQueueSize;
     float m_weight;
-    float m_lastVirtualFinishTime;
+    uint64_t m_lastVirtualFinishTime;
     Queue m_queue;
 };
 

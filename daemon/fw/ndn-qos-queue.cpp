@@ -56,12 +56,12 @@ QosQueue::GetWeight ()
 }
 
 void
-QosQueue::SetLastVirtualFinishTime (float lvft)
+QosQueue::SetLastVirtualFinishTime (uint64_t lvft)
 {
     m_lastVirtualFinishTime = lvft;
 }
 
-float
+uint64_t
 QosQueue::GetLastVirtualFinishTime()
 {
     return m_lastVirtualFinishTime;

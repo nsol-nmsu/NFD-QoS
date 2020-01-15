@@ -19,7 +19,7 @@
 
 #include "ndn-priority-tx-queue.hpp"
 
-//NS_LOG_COMPONENT_DEFINE ("ndn.NdnPriorityTxQueue");
+NS_LOG_COMPONENT_DEFINE ("ndn.NdnPriorityTxQueue");
 
 namespace nfd {
 namespace fw {
@@ -43,12 +43,9 @@ NdnPriorityTxQueue::GetFlowRate(QosQueue *queue)
 void
 NdnPriorityTxQueue::UpdateTime(ndn::Block packet, QosQueue *queue)
 {
-    //uint64_t current_time = Now().GetMilliSeconds();
-    float current_time = 3;//TODO:Remove this and use above line
-    float virtualStartTime = std::max(current_time, queue->GetLastVirtualFinishTime());
-
-    //TODO:Get the size of packet/wireEncode instead of PACKET_SIZE
-    float virtualFinishTime = virtualStartTime + (PACKET_SIZE * (1 - GetFlowRate(queue)));
+    uint64_t current_time = ns3::Simulator::Now().GetMilliSeconds();
+    uint64_t virtualStartTime = std::max(current_time, queue->GetLastVirtualFinishTime());
+    uint64_t virtualFinishTime = virtualStartTime + (packet.size() * (1 - GetFlowRate(queue)));
     queue->SetLastVirtualFinishTime( virtualFinishTime );
 }
 

@@ -57,26 +57,6 @@ QosStrategy::QosStrategy(Forwarder& forwarder, const Name& name)
   }
   this->setInstanceName(makeInstanceName(name, getStrategyName()));
 
-  // Create input and output queue for each link - NMSU
-  for (ns3::NodeList::Iterator node = ns3::NodeList::Begin(); node != ns3::NodeList::End(); node++) {
-    std::cout << "********* Inside QosStrategy constructor" << std::endl;
-    ns3::Ptr<ns3::ndn::GlobalRouter> source = (*node)->GetObject<ns3::ndn::GlobalRouter>();
-
-    if (source == 0) {
-        std::cout << "\nError: GlobalRouter object is empty!!";
-        //continue;
-    }
-    else{
-        std::cout << "\n********* Node: " << (*node)->GetId();
-        ns3::ndn::GlobalRouter::IncidencyList& graphEdges = source->GetIncidencies();
-
-        for (const auto& graphEdge : graphEdges) {
-            int link = get<2>(graphEdge)->GetObject<ns3::Node>()->GetId();
-            std::cout << "\n\t********* Link: " << link << std::endl;
-            //TODO: create input output queue
-        }
-    }
-  }
 }
 
 const Name&
@@ -94,9 +74,8 @@ QosStrategy::afterReceiveInterest(const Face& inFace, const Interest& interest,
 
     std::cout << "***Interest name: " << interest.getName() << std::endl;
 
-    std::string s = interest.getName().toUri();
-    //TODO: Remember to adjust dscp value when namespace is changed.
-    uint32_t dscp_value = std::stoi(s.substr (13,2));
+    std::string s = interest.getName().getSubName(2,1).toUri();
+    uint32_t dscp_value = std::stoi(s.substr(1));
 
     item.wireEncode = interest.wireEncode();
     item.packetType = INTEREST;
@@ -115,9 +94,8 @@ QosStrategy::afterReceiveNack(const Face& inFace, const lp::Nack& nack,
 
     std::cout << "***Nack name: " << nack.getInterest().getName() << std::endl;
 
-    std::string s = nack.getInterest().getName().toUri();
-    //TODO: Remember to adjust dscp value when namespace is changed.
-    uint32_t dscp_value = std::stoi(s.substr (13,2));
+    std::string s = nack.getInterest().getName().getSubName(2,1).toUri();
+    uint32_t dscp_value = std::stoi(s.substr (1));
 
     item.wireEncode = nack.getInterest().wireEncode();
     item.packetType = NACK;
@@ -139,9 +117,8 @@ QosStrategy::afterReceiveData(const shared_ptr<pit::Entry>& pitEntry,
     std::cout << "***Data name: " << data.getName() << std::endl;
 
     this->beforeSatisfyInterest(pitEntry, inFace, data);
-    std::string s = data.getName().toUri();
-    //TODO: Remember to adjust dscp value when namespace is changed.
-    uint32_t dscp_value = std::stoi(s.substr (13,2));
+    std::string s = data.getName().getSubName(2,1).toUri();
+    uint32_t dscp_value = std::stoi(s.substr (1));
 
     item.wireEncode = data.wireEncode();
     item.packetType = DATA;
