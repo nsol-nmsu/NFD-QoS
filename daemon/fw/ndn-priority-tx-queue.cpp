@@ -57,6 +57,7 @@ NdnPriorityTxQueue::SelectQueueToSend()
 
     if(m_highPriorityQueue.IsEmpty() == false )
     {
+        std::cout << "m_highPriorityQueue.GetLastVirtualFinishTime(): "<<m_mediumPriorityQueue.GetLastVirtualFinishTime() << std::endl;
         minVirtualFinishTime = m_highPriorityQueue.GetLastVirtualFinishTime();
         selected_queue = &m_highPriorityQueue;
     }
@@ -75,6 +76,7 @@ NdnPriorityTxQueue::SelectQueueToSend()
     {
         if(minVirtualFinishTime > m_lowPriorityQueue.GetLastVirtualFinishTime())
         {
+            std::cout << "m_lowPriorityQueue.GetLastVirtualFinishTime(): "<<m_mediumPriorityQueue.GetLastVirtualFinishTime() << std::endl;
             minVirtualFinishTime = m_lowPriorityQueue.GetLastVirtualFinishTime();
             selected_queue = &m_lowPriorityQueue;
         }

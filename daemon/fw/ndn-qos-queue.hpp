@@ -45,14 +45,19 @@ struct QueueItem
 {
     ndn::Block wireEncode;
     QosPacketType packetType;
-    const shared_ptr<pit::Entry>* pitEntry;
+    shared_ptr<pit::Entry> pitEntry;
     const Face* interface;
+
     QueueItem() : wireEncode(0),
-                  packetType(INVALID),
-                  pitEntry(NULL),
-                  interface(NULL)
-        {
-        }
+    packetType(INVALID),
+    pitEntry(NULL),
+    interface(NULL) { }
+    QueueItem(const shared_ptr<pit::Entry>* pe) : wireEncode(0),
+    packetType(INVALID),
+    interface(NULL) {
+        shared_ptr<pit::Entry> temp(*pe);
+        pitEntry = temp;
+    }
 };
 
 

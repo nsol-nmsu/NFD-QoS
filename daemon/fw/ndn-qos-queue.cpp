@@ -73,9 +73,9 @@ QosQueue::Enqueue (QueueItem item)
     if (m_queue.size() < GetMaxQueueSize())
     {
         std::cout << "Enqueing Item: "<< endl;
-        std::cout << "\tWireWncode: " << item.wireEncode;
+        //std::cout << "\tWireWncode: " << item.wireEncode;
         std::cout << "\tpacketType: " << item.packetType;
-        std::cout << "\tpitEntry: " << item.pitEntry;
+        //std::cout << "\tpitEntry: " << item.pitEntry;
         std::cout << "\tinterface: " << item.interface->getId()  << endl;
 
         m_queue.push_back(item);
@@ -96,9 +96,9 @@ QosQueue::Dequeue ()
         m_queue.pop_front();
 
         cout << "Dequeing item: " << std::endl;
-        std::cout << "\tWireWncode: " << m_item.wireEncode;
+        //std::cout << "\tWireWncode: " << m_item.wireEncode;
         std::cout << "\tpacketType: " << m_item.packetType;
-        std::cout << "\tpitEntry: " << m_item.pitEntry;
+        //std::cout << "\tpitEntry: " << m_item.pitEntry;
         std::cout << "\tinterface: " << m_item.interface->getId() << std::endl;
 
     } else
@@ -117,9 +117,9 @@ QosQueue::DisplayQueue ()
             std::cout <<"Queue Items: "<< std::endl;
             for (auto it = m_queue.cbegin(); it != m_queue.cend(); ++it)
             {
-                std::cout << "\tWireWncode: " << it->wireEncode;
+                //std::cout << "\tWireWncode: " << it->wireEncode;
                 std::cout << "\tpacketType: " << it->packetType;
-                std::cout << "\tpitEntry: " << it->pitEntry;
+                //std::cout << "\tpitEntry: " << it->pitEntry;
                 std::cout << "\tinterface: " << it->interface->getId() << std::endl;
             }
     } else

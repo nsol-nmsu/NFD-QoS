@@ -70,19 +70,18 @@ void
 QosStrategy::afterReceiveInterest(const Face& inFace, const Interest& interest,
                                         const shared_ptr<pit::Entry>& pitEntry)
 {
-    struct QueueItem item;
+    struct QueueItem item(&pitEntry);
 
     std::cout << "***Interest name: " << interest.getName() << std::endl;
 
     std::string s = interest.getName().getSubName(2,1).toUri();
     uint32_t dscp_value = std::stoi(s.substr(1));
-
     item.wireEncode = interest.wireEncode();
     item.packetType = INTEREST;
-    item.pitEntry = &pitEntry;
     item.interface = &inFace;
 
     m_tx_queue.DoEnqueue(item, dscp_value);
+    //ns3::Simulator::Schedule(ns3::Seconds(0.5), &QosStrategy::prioritySend, this);
     prioritySend();
 }
 
@@ -90,19 +89,19 @@ void
 QosStrategy::afterReceiveNack(const Face& inFace, const lp::Nack& nack,
                                     const shared_ptr<pit::Entry>& pitEntry)
 {
-    struct QueueItem item;
+    struct QueueItem item(&pitEntry);
 
-    std::cout << "***Nack name: " << nack.getInterest().getName() << std::endl;
+    std::cout << "***Nack name: " << nack.getInterest().getName() << " Reason: "<<nack.getReason()<< std::endl;
 
     std::string s = nack.getInterest().getName().getSubName(2,1).toUri();
     uint32_t dscp_value = std::stoi(s.substr (1));
 
     item.wireEncode = nack.getInterest().wireEncode();
     item.packetType = NACK;
-    item.pitEntry = &pitEntry;
     item.interface = &inFace;
 
     m_tx_queue.DoEnqueue(item, dscp_value);
+    //ns3::Simulator::Schedule(ns3::Seconds(0.5), &QosStrategy::prioritySend, this);
     prioritySend();
 }
 
@@ -110,7 +109,7 @@ void
 QosStrategy::afterReceiveData(const shared_ptr<pit::Entry>& pitEntry,
                            const Face& inFace, const Data& data)
 {
-    struct QueueItem item;
+    struct QueueItem item(&pitEntry);
 
     NFD_LOG_DEBUG("afterReceiveData pitEntry=" << pitEntry->getName() <<
             " inFace=" << inFace.getId() << " data=" << data.getName());
@@ -122,10 +121,10 @@ QosStrategy::afterReceiveData(const shared_ptr<pit::Entry>& pitEntry,
 
     item.wireEncode = data.wireEncode();
     item.packetType = DATA;
-    item.pitEntry = &pitEntry;
     item.interface = &inFace;
 
     m_tx_queue.DoEnqueue(item, dscp_value);
+    //ns3::Simulator::Schedule(ns3::Seconds(0.5), &QosStrategy::prioritySend, this);
     prioritySend();
 }
 
@@ -139,22 +138,22 @@ QosStrategy::prioritySend()
     struct QueueItem item = m_tx_queue.DoDequeue();
     interest.wireDecode( item.wireEncode );
     const Interest interest1 = interest;
+    const shared_ptr<pit::Entry>* PE = &(item.pitEntry);
 
-    switch(item.packetType)
-    {
+    switch(item.packetType) {
         case INTEREST:
             interest.wireDecode( item.wireEncode );
-            prioritySendInterest(*(item.pitEntry), *(item.interface), interest);
+            prioritySendInterest(*(PE), *(item.interface), interest);
             break;
 
         case DATA:
             data.wireDecode( item.wireEncode );
-            prioritySendData(*(item.pitEntry), *(item.interface), data);
+            prioritySendData(*(PE), *(item.interface), data);
             break;
 
         case NACK:
             nack = lp::Nack(interest1);
-            prioritySendNack(*(item.pitEntry), *(item.interface), nack);
+            prioritySendNack(*(PE), *(item.interface), nack);
             break;
 
         default:
@@ -183,18 +182,15 @@ QosStrategy::prioritySendInterest(const shared_ptr<pit::Entry>& pitEntry,
 {
   const fib::Entry& fibEntry = this->lookupFib(*pitEntry);
   const fib::NextHopList& nexthops = fibEntry.getNextHops();
-
   int nEligibleNextHops = 0;
-
   bool isSuppressed = false;
+  double consumed = tb.ConsumeTokens(30.0);
 
   std::cout << "\nGOT INTEREST in QoS strategy, tokens = ..........." << tb.GetTokens() << std::endl;
-  double consumed = tb.ConsumeTokens(30.0);
   std::cout << "CONSUME in QoS strategy, tokens = ..........." << consumed << std::endl;
 
   for (const auto& nexthop : nexthops) {
     Face& outFace = nexthop.getFace();
-
     RetxSuppressionResult suppressResult = m_retxSuppression.decidePerUpstream(*pitEntry, outFace);
 
     if (suppressResult == RetxSuppressionResult::SUPPRESS) {
@@ -216,6 +212,7 @@ QosStrategy::prioritySendInterest(const shared_ptr<pit::Entry>& pitEntry,
     if (suppressResult == RetxSuppressionResult::FORWARD) {
       m_retxSuppression.incrementIntervalForOutRecord(*pitEntry->getOutRecord(outFace));
     }
+
     ++nEligibleNextHops;
   }
 
