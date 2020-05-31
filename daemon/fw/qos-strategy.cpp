@@ -134,32 +134,48 @@ QosStrategy::prioritySend()
     Interest interest;
     Data data;
     lp::Nack nack;
+    int TOKEN_REQUIRED = 5;
 
-    struct QueueItem item = m_tx_queue.DoDequeue();
-    interest.wireDecode( item.wireEncode );
-    const Interest interest1 = interest;
-    const shared_ptr<pit::Entry>* PE = &(item.pitEntry);
+    std::cout << "\nSend, tokens = ..........." << tb.GetTokens() << std::endl;
+    if(tb.GetTokens() >= TOKEN_REQUIRED)
+    {
+        //determine howmany token is required
+        double consumed = tb.ConsumeTokens(TOKEN_REQUIRED);
+        std::cout << "CONSUME in QoS strategy, tokens = ..........." << consumed << std::endl;
 
-    switch(item.packetType) {
-        case INTEREST:
-            interest.wireDecode( item.wireEncode );
-            prioritySendInterest(*(PE), *(item.interface), interest);
-            break;
+        //Dequeue the packet
+        struct QueueItem item = m_tx_queue.DoDequeue();
+        interest.wireDecode( item.wireEncode );
+        const Interest interest1 = interest;
+        const shared_ptr<pit::Entry>* PE = &(item.pitEntry);
 
-        case DATA:
-            data.wireDecode( item.wireEncode );
-            prioritySendData(*(PE), *(item.interface), data);
-            break;
+        switch(item.packetType) {
+            case INTEREST:
+                interest.wireDecode( item.wireEncode );
+                prioritySendInterest(*(PE), *(item.interface), interest);
+                break;
 
-        case NACK:
-            nack = lp::Nack(interest1);
-            prioritySendNack(*(PE), *(item.interface), nack);
-            break;
+            case DATA:
+                data.wireDecode( item.wireEncode );
+                prioritySendData(*(PE), *(item.interface), data);
+                break;
 
-        default:
-            std::cout<<"prioritySend(Invalid Type)\n";
-            break;
+            case NACK:
+                nack = lp::Nack(interest1);
+                prioritySendNack(*(PE), *(item.interface), nack);
+                break;
+
+            default:
+                std::cout<<"prioritySend(Invalid Type)\n";
+                break;
+        }
     }
+    else
+    {
+        //TODO: wait till token is available
+        std::cout << "Token not available...!!!" << std::endl;
+    }
+
 }
 
 void
@@ -184,10 +200,6 @@ QosStrategy::prioritySendInterest(const shared_ptr<pit::Entry>& pitEntry,
   const fib::NextHopList& nexthops = fibEntry.getNextHops();
   int nEligibleNextHops = 0;
   bool isSuppressed = false;
-  double consumed = tb.ConsumeTokens(30.0);
-
-  std::cout << "\nGOT INTEREST in QoS strategy, tokens = ..........." << tb.GetTokens() << std::endl;
-  std::cout << "CONSUME in QoS strategy, tokens = ..........." << consumed << std::endl;
 
   for (const auto& nexthop : nexthops) {
     Face& outFace = nexthop.getFace();
