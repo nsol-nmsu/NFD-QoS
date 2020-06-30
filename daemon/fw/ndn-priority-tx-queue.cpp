@@ -49,87 +49,134 @@ NdnPriorityTxQueue::UpdateTime(ndn::Block packet, QosQueue *queue)
     queue->SetLastVirtualFinishTime( virtualFinishTime );
 }
 
-QosQueue*
-NdnPriorityTxQueue::SelectQueueToSend()
+int
+NdnPriorityTxQueue::SelectQueueToSend(double highTokens, double midTokens, double lowTokens)
 {
+    int squeue = -1;
     QosQueue* selected_queue = &m_highPriorityQueue;
     float minVirtualFinishTime = std::numeric_limits<float>::max();
 
-    if(m_highPriorityQueue.IsEmpty() == false )
+    if (m_highPriorityQueue.IsEmpty() == false && highTokens > 7)
     {
-        std::cout << "m_highPriorityQueue.GetLastVirtualFinishTime(): "<<m_mediumPriorityQueue.GetLastVirtualFinishTime() << std::endl;
+        //std::cout << "m_highPriorityQueue.GetLastVirtualFinishTime(): "<<m_mediumPriorityQueue.GetLastVirtualFinishTime() << std::endl;
         minVirtualFinishTime = m_highPriorityQueue.GetLastVirtualFinishTime();
         selected_queue = &m_highPriorityQueue;
+        squeue = 0;
     }
 
-    if(m_mediumPriorityQueue.IsEmpty() == false )
+    if (m_mediumPriorityQueue.IsEmpty() == false && midTokens > 6)
     {
-        std::cout << "m_mediumPriorityQueue.GetLastVirtualFinishTime(): "<<m_mediumPriorityQueue.GetLastVirtualFinishTime() << std::endl;
-        if(minVirtualFinishTime > m_mediumPriorityQueue.GetLastVirtualFinishTime())
+        //std::cout << "m_mediumPriorityQueue.GetLastVirtualFinishTime(): "<<m_mediumPriorityQueue.GetLastVirtualFinishTime() << std::endl;
+        if (minVirtualFinishTime > m_mediumPriorityQueue.GetLastVirtualFinishTime())
         {
             minVirtualFinishTime = m_mediumPriorityQueue.GetLastVirtualFinishTime();
             selected_queue = &m_mediumPriorityQueue;
+            squeue = 1;
+
         }
     }
 
-    if(m_lowPriorityQueue.IsEmpty() == false )
+    if (m_lowPriorityQueue.IsEmpty() == false && lowTokens > 5)
     {
-        if(minVirtualFinishTime > m_lowPriorityQueue.GetLastVirtualFinishTime())
+        if (minVirtualFinishTime > m_lowPriorityQueue.GetLastVirtualFinishTime())
         {
-            std::cout << "m_lowPriorityQueue.GetLastVirtualFinishTime(): "<<m_mediumPriorityQueue.GetLastVirtualFinishTime() << std::endl;
+            //std::cout << "m_lowPriorityQueue.GetLastVirtualFinishTime(): "<<m_mediumPriorityQueue.GetLastVirtualFinishTime() << std::endl;
             minVirtualFinishTime = m_lowPriorityQueue.GetLastVirtualFinishTime();
             selected_queue = &m_lowPriorityQueue;
+            squeue = 2;
         }
     }
 
-    return selected_queue;
+    return squeue;
 }
 
-void
+bool
 NdnPriorityTxQueue::DoEnqueue(QueueItem item, uint32_t dscp_value)
 {
     QosQueue *queue;
 
-    if(dscp_value >= 1 && dscp_value <= 20)
+    if (dscp_value >= 1 && dscp_value <= 20)
     {
-        std::cout << "Dscp value: " << dscp_value << " **** High priority" << std::endl;
+        //std::cout << "Dscp value: " << dscp_value << " **** High priority" << std::endl;
         queue = &m_highPriorityQueue;
 
-    } else if(dscp_value >= 21 && dscp_value <= 40)
+    } else if (dscp_value >= 21 && dscp_value <= 40)
     {
-        std::cout << "Dscp value: " << dscp_value << " **** Medium priority" << std::endl;
+        //std::cout << "Dscp value: " << dscp_value << " **** Medium priority" << std::endl;
         queue = &m_mediumPriorityQueue;
 
-    }else if(dscp_value >= 41 && dscp_value <= 64)
+    }else if (dscp_value >= 41 && dscp_value <= 64)
     {
-        std::cout << "Dscp value: " << dscp_value << " **** Low priority" << std::endl;
+        //std::cout << "Dscp value: " << dscp_value << " **** Low priority" << std::endl;
         queue = &m_lowPriorityQueue;
 
     } else
     {
-        std::cout << "Incorrect dscp value !! Enqueue failed !!!! ";
+        return false;
+        //std::cout << "Incorrect dscp value !! Enqueue failed !!!! ";
     }
 
-    queue->Enqueue(item);
-    UpdateTime(item.wireEncode, queue);
+    if (queue->Enqueue(item)){
+        UpdateTime(item.wireEncode, queue);
+        return true;
+    } else {
+        return false;
+    }
 }
 
 QueueItem
-NdnPriorityTxQueue::DoDequeue()
+NdnPriorityTxQueue::DoDequeue(int choice)
 {
     QueueItem item;
 
-    if((!m_highPriorityQueue.IsEmpty()) || (!m_mediumPriorityQueue.IsEmpty()) || (!m_lowPriorityQueue.IsEmpty()))
+    if ((!m_highPriorityQueue.IsEmpty()) || (!m_mediumPriorityQueue.IsEmpty()) || (!m_lowPriorityQueue.IsEmpty()))
     {
-        QosQueue* queue = SelectQueueToSend();
-        item = queue->Dequeue();
+        //QosQueue* queue = SelectQueueToSend();
+        if (choice == 0) {
+            item = m_highPriorityQueue.Dequeue();
+        } else if (choice == 1) {
+            item = m_mediumPriorityQueue.Dequeue();
+        } else { item = m_lowPriorityQueue.Dequeue();
+        }
 
     } else
     {
-        std::cout << "DoDequeue failed. All queues are empty !!!!" << std::endl;
+        //std::cout << "DoDequeue failed. All queues are empty !!!!" << std::endl;
     }
 
     return item;
+}
+bool
+NdnPriorityTxQueue::IsEmpty()
+{
+  return (m_highPriorityQueue.IsEmpty() && m_mediumPriorityQueue.IsEmpty() && m_lowPriorityQueue.IsEmpty());
+}
+
+int
+NdnPriorityTxQueue::tokenReqHig()
+{
+    if (m_highPriorityQueue.IsEmpty() == false) {
+        return 7;
+    }
+    return 0;
+}
+
+int
+NdnPriorityTxQueue::tokenReqMid()
+{
+    if (m_mediumPriorityQueue.IsEmpty() == false) {
+        return 6;
+    }
+    return 0;
+}
+
+int
+NdnPriorityTxQueue::tokenReqLow()
+{
+    if (m_lowPriorityQueue.IsEmpty() == false ) {
+        return 5;
+    }
+    return 0;
 }
 
 } // namespace ndn

@@ -50,14 +50,26 @@ public:
     void
     UpdateTime(ndn::Block packet, QosQueue *queue);
 
-    QosQueue*
-    SelectQueueToSend();
+    int
+    SelectQueueToSend(double highTokens, double midTokens, double lowTokens);
 
-    void
+    bool
     DoEnqueue(QueueItem item, uint32_t dscp_value );
 
     QueueItem
-    DoDequeue();
+    DoDequeue(int choice);
+
+    bool
+    IsEmpty ();
+
+    int
+    tokenReqHig();
+
+    int
+    tokenReqMid();
+
+    int
+    tokenReqLow();
 
 public:
 

@@ -26,6 +26,9 @@
 #include "best-route-strategy2.hpp"
 #include "algorithm.hpp"
 #include "core/logger.hpp"
+//
+#include "ns3/simulator.h"
+#include "../../../helper/ndn-scenario-helper.hpp"
 
 namespace nfd {
 namespace fw {
@@ -138,6 +141,8 @@ BestRouteStrategy2::afterReceiveInterest(const Face& inFace, const Interest& int
   const fib::NextHopList& nexthops = fibEntry.getNextHops();
   auto it = nexthops.end();
 
+
+  int node= ns3::NodeContainer::GetGlobal().Get(ns3::Simulator::GetContext())->GetId();
   if (suppression == RetxSuppressionResult::NEW) {
     // forward to nexthop with lowest cost except downstream
     it = std::find_if(nexthops.begin(), nexthops.end(), [&] (const auto& nexthop) {

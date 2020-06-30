@@ -27,6 +27,7 @@
 #define NFD_DAEMON_FW_TOKEN_BUCKET_HPP
 
 #include "strategy.hpp"
+#include <unordered_map>
 
 namespace nfd {
 namespace fw {
@@ -38,21 +39,20 @@ class TokenBucket
 public:
   TokenBucket();
 
-  TokenBucket(double capacity, double fillRate);
+  signal::Signal<TokenBucket>
+  send;
+  //void
+  //callSend();
 
-  double
-  GetTokens();
+  void
+  addToken();
 
-  double
-  ConsumeTokens(double tokens);
-
-private:
-  double m_capacity;
-  double m_tokens;
-  double m_fillRate;
-  bool m_first;
-  ns3::Time m_timestamp;
-
+  void
+  consumeToken(double tokens, uint32_t face);
+  bool hasFaces;
+  std::unordered_map<uint32_t, double> m_tokens;
+  std::unordered_map<uint32_t, double> m_need;
+  int m_capacity;
 };
 
 } // namespace fw

@@ -67,23 +67,25 @@ QosQueue::GetLastVirtualFinishTime()
     return m_lastVirtualFinishTime;
 }
 
-void
+bool
 QosQueue::Enqueue (QueueItem item)
 {
     if (m_queue.size() < GetMaxQueueSize())
     {
-        std::cout << "Enqueing Item: "<< endl;
+        //std::cout << "Enqueing Item: "<< endl;
         //std::cout << "\tWireWncode: " << item.wireEncode;
-        std::cout << "\tpacketType: " << item.packetType;
+        //std::cout << "\tpacketType: " << item.packetType;
         //std::cout << "\tpitEntry: " << item.pitEntry;
-        std::cout << "\tinterface: " << item.interface->getId()  << endl;
+        //std::cout << "\tinterface: " << item.interface->getId()  << endl;
 
         m_queue.push_back(item);
 
     } else
     {
-        std::cout << "Enqueue failed. Queue full!!!!" << endl;
+        return false;
+        //std::cout << "Enqueue failed. Queue full!!!!" << endl;
     }
+    return true;
 }
 
 QueueItem
@@ -95,15 +97,14 @@ QosQueue::Dequeue ()
         m_item = m_queue.front();
         m_queue.pop_front();
 
-        cout << "Dequeing item: " << std::endl;
+        //cout << "Dequeing item: " << std::endl;
         //std::cout << "\tWireWncode: " << m_item.wireEncode;
-        std::cout << "\tpacketType: " << m_item.packetType;
+        //std::cout << "\tpacketType: " << m_item.packetType;
         //std::cout << "\tpitEntry: " << m_item.pitEntry;
-        std::cout << "\tinterface: " << m_item.interface->getId() << std::endl;
-
+        //std::cout << "\tinterface: " << m_item.interface->getId() << std::endl;
     } else
     {
-        cout << "Dequeue failed. Queue is empty!!!" << endl;
+        //cout << "Dequeue failed. Queue is empty!!!" << endl;
     }
     return m_item;
 }
@@ -120,7 +121,7 @@ QosQueue::DisplayQueue ()
                 //std::cout << "\tWireWncode: " << it->wireEncode;
                 std::cout << "\tpacketType: " << it->packetType;
                 //std::cout << "\tpitEntry: " << it->pitEntry;
-                std::cout << "\tinterface: " << it->interface->getId() << std::endl;
+                std::cout << "\tinterface: " << it->inface->getId() << std::endl;
             }
     } else
     {
@@ -144,7 +145,7 @@ QosQueue::GetFirstElement()
         m_item = m_queue.front();
     } else
     {
-        std::cout << "Queue is Empty !!!!" << endl;
+        //std::cout << "Queue is Empty !!!!" << endl;
     }
 
     return m_item;

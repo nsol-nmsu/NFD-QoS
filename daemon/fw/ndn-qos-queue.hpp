@@ -26,7 +26,7 @@
 #include <NFD/daemon/face/face.hpp>
 #include "ns3/log.h"
 
-#define QUEUE_SIZE 5
+#define QUEUE_SIZE 100
 
 using namespace std;
 
@@ -46,15 +46,18 @@ struct QueueItem
     ndn::Block wireEncode;
     QosPacketType packetType;
     shared_ptr<pit::Entry> pitEntry;
-    const Face* interface;
+    const Face* inface;
+    const Face* outface;
 
     QueueItem() : wireEncode(0),
     packetType(INVALID),
     pitEntry(NULL),
-    interface(NULL) { }
+    inface(NULL),
+    outface(NULL) { }
     QueueItem(const shared_ptr<pit::Entry>* pe) : wireEncode(0),
     packetType(INVALID),
-    interface(NULL) {
+    inface(NULL),
+    outface(NULL) {
         shared_ptr<pit::Entry> temp(*pe);
         pitEntry = temp;
     }
@@ -89,7 +92,7 @@ public:
     uint64_t
     GetLastVirtualFinishTime ();
 
-    void
+    bool
     Enqueue (QueueItem item);
 
     QueueItem

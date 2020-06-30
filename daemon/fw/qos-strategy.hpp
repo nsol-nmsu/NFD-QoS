@@ -35,6 +35,7 @@
 #include "ns3/ndnSIM/model/ndn-global-router.hpp"
 #include "ns3/ndnSIM/helper/boost-graph-ndn-global-routing-helper.hpp"
 #include "ndn-priority-tx-queue.hpp"
+#include <unordered_map>
 
 
 namespace nfd {
@@ -75,7 +76,7 @@ public:
 
   void
   prioritySendData(const shared_ptr<pit::Entry>& pitEntry,
-                   const Face& inFace, const Data& data);
+                   const Face& inFace, const Data& data, const Face& outFace);
 
   void
   prioritySendNack(const shared_ptr<pit::Entry>& pitEntry,
@@ -83,16 +84,21 @@ public:
 
   void
   prioritySendInterest(const shared_ptr<pit::Entry>& pitEntry,
-                       const Face& inFace, const Interest& interest);
+                       const Face& inFace, const Interest& interest, const Face& outFace);
 
   void
   prioritySend();
 
 private:
 
-  NdnPriorityTxQueue m_tx_queue;
+  //NdnPriorityTxQueue m_tx_queue;
+  unordered_map<uint32_t, NdnPriorityTxQueue> m_tx_queue;
   friend ProcessNackTraits<QosStrategy>;
   RetxSuppressionExponential m_retxSuppression;
+  TokenBucket m_sender1;
+  TokenBucket m_sender2;
+  TokenBucket m_sender3;
+  int packetsDropped = 0;
 
 PUBLIC_WITH_TESTS_ELSE_PRIVATE:
   static const time::milliseconds RETX_SUPPRESSION_INITIAL;

@@ -29,59 +29,52 @@ namespace nfd {
 namespace fw {
 
 TokenBucket::TokenBucket()
-  : m_capacity(80.0)
-  , m_fillRate(2.0)
-  , m_first(true)
-  , m_timestamp(ns3::Simulator::Now())
 {
+    m_capacity = 0;
+    hasFaces = false;
 }
 
-TokenBucket::TokenBucket(double capacity, double fillRate)
-  : m_capacity(capacity)
-  , m_fillRate(fillRate)
-  , m_first(true)
-  , m_timestamp(ns3::Simulator::Now())
-{ 
-}
-
-double
-TokenBucket::GetTokens()
-{ 
-  ns3::Time timeNow = ns3::Simulator::Now();
-  
-  if (m_first == true) {
-        m_tokens = m_capacity;
-        m_first = false;
-  }
-  else {
-        //Time timeNow = ns3::Simulator::Now();
-        double delta = m_fillRate * (timeNow - m_timestamp).GetSeconds();
-        
-        //Check to make sure tokens are not generated beyong specified capacity
-        if (m_capacity < (m_tokens + delta)) {
-                m_tokens = m_capacity;
-        }
-        else {  
-                m_tokens = m_tokens + delta;
-        }
-  }
-  
-  m_timestamp = timeNow;
-  return m_tokens;
-}
-
-double
-TokenBucket::ConsumeTokens(double tokens)
+/*
+void
+TokenBucket::callSend()
 {
+    //std::cout<<"\nSending signal to Strategy"<<std::endl;
+    send();
+}
+*/
 
-  if (tokens <= m_tokens) {
-    m_tokens -= tokens;
-    return tokens;
-  }
-  else {
-    return -1.0;
+void
+TokenBucket::addToken()
+{ 
+   //if(hasFaces == false) return;
+   std::unordered_map<uint32_t,double >::iterator itt = m_tokens.begin();
+   bool callsend = false;
+
+   while(itt != m_tokens.end()){
+       if (itt->second < m_capacity) {
+           m_tokens[itt->first]++;
+       }
+
+       if (m_need[itt->first] != 0 && m_tokens[itt->first] >= m_need[itt->first]) {
+           callsend = true;
+       }
+
+       itt++;
+   }
+
+   if (callsend) {
+       send();
+   }
+}
+
+void
+TokenBucket::consumeToken(double tokens, uint32_t face)
+{
+  if (m_tokens.find(face) == m_tokens.end()){
+     m_tokens[face] = m_capacity;
   }
 
+  m_tokens[face] = m_tokens[face] - tokens;
 }
 
 

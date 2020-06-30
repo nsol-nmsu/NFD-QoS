@@ -262,11 +262,9 @@ Forwarder::onInterestFinalize(const shared_ptr<pit::Entry>& pitEntry)
 {
   NFD_LOG_DEBUG("onInterestFinalize interest=" << pitEntry->getName() <<
                 (pitEntry->isSatisfied ? " satisfied" : " unsatisfied"));
-
   if (!pitEntry->isSatisfied) {
     beforeExpirePendingInterest(*pitEntry);
   }
-
   // Dead Nonce List insert if necessary
   this->insertDeadNonceList(*pitEntry, 0);
 
@@ -555,7 +553,7 @@ Forwarder::setExpiryTimer(const shared_ptr<pit::Entry>& pitEntry, time::millisec
 
   scheduler::cancel(pitEntry->expiryTimer);
 
-  pitEntry->expiryTimer = scheduler::schedule(duration, [=] { onInterestFinalize(pitEntry); });
+  pitEntry->expiryTimer = scheduler::schedule((duration), [=] { onInterestFinalize(pitEntry); });
 }
 
 void
