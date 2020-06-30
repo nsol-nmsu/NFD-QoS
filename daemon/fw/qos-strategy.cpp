@@ -443,6 +443,7 @@ QosStrategy::prioritySend()
     Interest interest;
     Data data;
     lp::Nack nack;
+
     double TOKEN_REQUIRED = 1;
     bool tokenwait = false;
     //std::cout << "\n|||||" << node->GetId()<<"||||||";
