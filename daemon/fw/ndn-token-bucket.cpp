@@ -61,10 +61,10 @@ TokenBucket::addToken()
 
        itt++;
    }
-
-   if (callsend) {
-       send();
-   }
+   send();
+   //if (callsend) {
+   //    send();
+   //}
 }
 
 void

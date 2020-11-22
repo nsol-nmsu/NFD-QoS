@@ -26,7 +26,7 @@
 #include <NFD/daemon/face/face.hpp>
 #include "ns3/log.h"
 
-#define QUEUE_SIZE 100
+#define QUEUE_SIZE 10
 
 using namespace std;
 
