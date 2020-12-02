@@ -1,19 +1,20 @@
 /* -*- Mode: C++; c-file-style: "gnu"; indent-tabs-mode:nil -*- */
 /*
- * Copyright (c) 2012 University of California, Los Angeles
+ * Copyright (  C  ) 2020 New Mexico State University
  *
- * This program is free software; you can redistribute it and/or modify
- * it under the terms of the GNU General Public License version 2 as
- * published by the Free Software Foundation;
- *
+ * George Torres, Anju Kunnumpurathu James
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (  at your option  ) any later version.
+
  * This program is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU General Public License for more details.
- *
+
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  */
 
@@ -41,41 +42,60 @@ class NdnPriorityTxQueue : private QosQueue
 
 public:
 
-    //constructor
-    NdnPriorityTxQueue ();
+  //constructor
+  NdnPriorityTxQueue();
 
-    float 
-    GetFlowRate(QosQueue *queue);
+  /** \brief Find flow rate of the given queue.
+   *  \param queue the queue for which we will find the flow rate.
+   */
+  float
+  GetFlowRate( QosQueue *queue );
 
-    void
-    UpdateTime(ndn::Block packet, QosQueue *queue);
+  /** \brief Update the time of the given packet within the queue.
+   *  \param packet the packet we are updating.
+   *  \param queue the queue which has the packet of interest.
+   */
+  void
+  UpdateTime( ndn::Block packet, QosQueue *queue );
 
-    int
-    SelectQueueToSend(double highTokens, double midTokens, double lowTokens);
+  /** \brief Use WFQ algorithm to select the next queue to send from taking the token count into account.
+   *  \param highTokens the number of tokens the high priorty queue has.
+   *  \param midTokens the number of tokens the mid priorty queue has.
+   *  \param lowTokens the number of tokens the low priorty queue has.
+   */
+  int
+  SelectQueueToSend( double highTokens, double midTokens, double lowTokens );
 
-    bool
-    DoEnqueue(QueueItem item, uint32_t dscp_value );
+  /** \brief Push the given packet and corresponding metainfo onto a queue.
+   *  \param item the packet and its metainfo, incoming face, pit entry, etc.
+   *  \param dscp_value the value which determins packet priorty.
+   */
+  bool
+  DoEnqueue( QueueItem item, uint32_t dscp_value );
 
-    QueueItem
-    DoDequeue(int choice);
+  /** \brief Dequeue a packet from the indicated queue.
+   *  \param choice an int value repersenting one of the three queues.
+   */
+  QueueItem
+  DoDequeue( int choice );
 
-    bool
-    IsEmpty ();
+  bool
+  IsEmpty();
 
-    int
-    tokenReqHig();
+  int
+  tokenReqHig();
 
-    int
-    tokenReqMid();
+  int
+  tokenReqMid();
 
-    int
-    tokenReqLow();
+  int
+  tokenReqLow();
 
 public:
 
-    QosQueue m_highPriorityQueue;
-    QosQueue m_mediumPriorityQueue;
-    QosQueue m_lowPriorityQueue;
+  QosQueue m_highPriorityQueue;
+  QosQueue m_mediumPriorityQueue;
+  QosQueue m_lowPriorityQueue;
 };
 
 }// namespace fw

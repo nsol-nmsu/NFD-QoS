@@ -6,8 +6,10 @@
  *                           University Pierre & Marie Curie, Sorbonne University,
  *                           Washington University in St. Louis,
  *                           Beijing Institute of Technology,
- *                           The University of Memphis.
+ *                           The University of Memphis,
+ *                           New Mexico State University.
  *
+ * Modified by George Torres 2020
  * This file is part of NFD ( Named Data Networking Forwarding Daemon ).
  * See AUTHORS.md for complete list of NFD authors and contributors.
  *
@@ -30,18 +32,11 @@
 #include "TBucket.hpp"
 #include "ns3/simulator.h"
 #include "../../../helper/ndn-scenario-helper.hpp"
-#include <fstream>
-#include <iomanip>
-#include <iostream>
-#include "model/ndn-net-device-transport.hpp"
-#include "ns3/ptr.h"
-#include "ns3/net-device.h"
-#include "ns3/point-to-point-net-device.h"
-#include "ns3/queue.h"
+
+
 namespace nfd {
 namespace fw {
 
-//const Name QosStrategy::STRATEGY_NAME( "ndn:/localhost/nfd/strategy/qos/%FD%01" );
 NFD_REGISTER_STRATEGY( QosStrategy );
 
 NFD_LOG_INIT( QosStrategy );
@@ -49,28 +44,27 @@ NFD_LOG_INIT( QosStrategy );
 const time::milliseconds QosStrategy::RETX_SUPPRESSION_INITIAL( 10 );
 const time::milliseconds QosStrategy::RETX_SUPPRESSION_MAX( 250 );
 
-
 QosStrategy::QosStrategy( Forwarder& forwarder, const Name& name )
   : Strategy( forwarder )
-    , ProcessNackTraits( this )
-    , m_retxSuppression( RETX_SUPPRESSION_INITIAL,
-        RetxSuppressionExponential::DEFAULT_MULTIPLIER,
-        RETX_SUPPRESSION_MAX )
+  , ProcessNackTraits( this )
+  , m_retxSuppression( RETX_SUPPRESSION_INITIAL,
+                      RetxSuppressionExponential::DEFAULT_MULTIPLIER,
+                      RETX_SUPPRESSION_MAX )
 {
-
   CT.m_tokens = 0;
   ParsedInstanceName parsed = parseInstanceName( name );
 
-  if ( !parsed.parameters.empty() ) {
+  if( !parsed.parameters.empty() ) {
     BOOST_THROW_EXCEPTION( std::invalid_argument( "QosStrategy does not accept parameters" ) );
   }
 
-  if ( parsed.version && *parsed.version != getStrategyName()[-1].toVersion() ) {
-    BOOST_THROW_EXCEPTION( std::invalid_argument(
+  if( parsed.version && *parsed.version != getStrategyName()[-1].toVersion() ) {
+    BOOST_THROW_EXCEPTION( std::invalid_argument( 
           "QosStrategy does not support version " + to_string( *parsed.version ) ) );
   }
 
   this->setInstanceName( makeInstanceName( name, getStrategyName() ) );
+
   int node= ns3::NodeContainer::GetGlobal().Get( ns3::Simulator::GetContext() )->GetId();
 
   CT.sender1[node] = &m_sender1;
@@ -88,7 +82,6 @@ QosStrategy::QosStrategy( Forwarder& forwarder, const Name& name )
       } );
 }
 
-
 const Name&
 QosStrategy::getStrategyName()
 {
@@ -96,50 +89,35 @@ QosStrategy::getStrategyName()
   return strategyName;
 }
 
-
 static bool
 isNextHopEligible( const Face& inFace, const Interest& interest,
     const fib::NextHop& nexthop,
     const shared_ptr<pit::Entry>& pitEntry,
     bool wantUnused = false,
-    time::steady_clock::TimePoint now = time::steady_clock::TimePoint::min(),
-    uint32_t limit = 100 )
+    time::steady_clock::TimePoint now = time::steady_clock::TimePoint::min() )
 {
   const Face& outFace = nexthop.getFace();
 
-  // do not forward back to the same face, unless it is ad hoc
-  if ( outFace.getId() == inFace.getId() && outFace.getLinkType() != ndn::nfd::LINK_TYPE_AD_HOC ) {
+  // Do not forward back to the same face, unless it is ad hoc.
+  if( outFace.getId() == inFace.getId() && outFace.getLinkType() != ndn::nfd::LINK_TYPE_AD_HOC )
     return false;
-  }
 
-  // forwarding would violate scope
-  if ( wouldViolateScope( inFace, interest, outFace ) ) {
+  // Forwarding would violate scope.
+  if( wouldViolateScope( inFace, interest, outFace ) )
     return false;
-  }
 
-  if ( wantUnused ) {
-    // nexthop must not have unexpired out-record
+  if( wantUnused ) {
+    // Nexthop must not have unexpired out-record
     auto outRecord = pitEntry->getOutRecord( outFace );
-    if ( outRecord != pitEntry->out_end() && outRecord->getExpiry() > now ) {
+    if( outRecord != pitEntry->out_end() && outRecord->getExpiry() > now ) {
       return false;
     }
-  }
-
-  ns3::ndn::NetDeviceTransport* device = dynamic_cast<ns3::ndn::NetDeviceTransport*>( outFace.getTransport() );
-  if( device == NULL ) {
-    return false;
-  }
-
-  uint32_t rate = ns3::DynamicCast<ns3::QueueBase>( ns3::DynamicCast<ns3::PointToPointNetDevice>( device->GetNetDevice() )->GetQueue() )->GetNPackets() ;
-  if( rate > limit ) {
-    return false;
   }
 
   return true;
 }
 
-
-/** \brief pick an eligible NextHop with earliest out-record
+/** \brief Pick an eligible NextHop with earliest out-record.
  *  \note It is assumed that every nexthop has an out-record.
  */
 static fib::NextHopList::const_iterator
@@ -151,14 +129,13 @@ findEligibleNextHopWithEarliestOutRecord( const Face& inFace, const Interest& in
   auto earliestRenewed = time::steady_clock::TimePoint::max();
 
   for( auto it = nexthops.begin(); it != nexthops.end(); ++it ) {
-    if ( !isNextHopEligible( inFace, interest, *it, pitEntry ) ) {
+    if( !isNextHopEligible( inFace, interest, *it, pitEntry ) )
       continue;
-    }
 
     auto outRecord = pitEntry->getOutRecord( it->getFace() );
     BOOST_ASSERT( outRecord != pitEntry->out_end() );
 
-    if ( outRecord->getLastRenewed() < earliestRenewed ) {
+    if( outRecord->getLastRenewed() < earliestRenewed ) {
       found = it;
       earliestRenewed = outRecord->getLastRenewed();
     }
@@ -167,89 +144,79 @@ findEligibleNextHopWithEarliestOutRecord( const Face& inFace, const Interest& in
   return found;
 }
 
-
 void
 QosStrategy::afterReceiveInterest( const Face& inFace, const Interest& interest,
-    const shared_ptr<pit::Entry>& pitEntry )
+                                        const shared_ptr<pit::Entry>& pitEntry )
 {
   struct QueueItem item( &pitEntry );
-  //std::cout << "***Interest name: " << interest.getName() << std::endl;
   std::string s = interest.getName().getSubName( 2,1 ).toUri();
   uint32_t dscp_value;
 
-  if( interest.getName().getSubName( 1,1 ).toUri() == "/typeI" ) {
+  if( interest.getName().getSubName( 1,1 ).toUri() == "/typeI"  ) {
     dscp_value = 1;
-  } else if ( interest.getName().getSubName( 1,1 ).toUri() == "/typeII" ) {
+  } else if( interest.getName().getSubName( 1,1 ).toUri() == "/typeII"  ) {
     dscp_value = 21;
-  } else if ( interest.getName().getSubName( 1,1 ).toUri() == "/typeIII" ) {
+  } else if( interest.getName().getSubName( 1,1 ).toUri() == "/be"  ) {
     dscp_value = 60;
   } else {
     dscp_value = std::stoi( s.substr( 1 ) );
   }
 
-  ns3::Ptr<ns3::Node> context= ns3::NodeContainer::GetGlobal().Get( ns3::Simulator::GetContext() );
-  int node= context->GetId();
-
   item.wireEncode = interest.wireEncode();
   item.packetType = INTEREST;
   item.inface = &inFace;
 
-  if( dscp_value != 60 ) {
-    //uint32_t f = inFace.getId();
+  if( dscp_value != 60  ) {
     const fib::Entry& fibEntry = this->lookupFib( *pitEntry );
     const fib::NextHopList& nexthops = fibEntry.getNextHops();
     int nEligibleNextHops = 0;
     bool isSuppressed = false;
 
-    Forwarder& fwdr = *( context->GetObject<ns3::ndn::L3Protocol>()->getForwarder() );
-    const Fib& fib = fwdr.getFib();
-
-    s = interest.getName().getSubName( 3,1 ).toUri().substr( 4 );
-
     for( const auto& nexthop : nexthops ) {
       Face& outFace = nexthop.getFace();
       RetxSuppressionResult suppressResult = m_retxSuppression.decidePerUpstream( *pitEntry, outFace );
 
-      if ( suppressResult == RetxSuppressionResult::SUPPRESS ) {
+      if( suppressResult == RetxSuppressionResult::SUPPRESS ) {
         NFD_LOG_DEBUG( interest << " from=" << inFace.getId()
             << "to=" << outFace.getId() << " suppressed" );
         isSuppressed = true;
         continue;
       }
 
-      if ( ( outFace.getId() == inFace.getId() && outFace.getLinkType() != ndn::nfd::LINK_TYPE_AD_HOC ) ||
+      if( ( outFace.getId() == inFace.getId() && outFace.getLinkType() != ndn::nfd::LINK_TYPE_AD_HOC ) ||
           wouldViolateScope( inFace, interest, outFace ) ) {
         continue;
       }
 
-      ns3::ndn::NetDeviceTransport* device = dynamic_cast<ns3::ndn::NetDeviceTransport*>( outFace.getTransport() );
-
       uint32_t f = outFace.getId();
       item.outface = &outFace;
+
       m_tx_queue[f].DoEnqueue( item, dscp_value );
 
-      NFD_LOG_DEBUG( interest << " from=" << inFace.getId() << " pitEntry-to=" << outFace.getId() );
+      NFD_LOG_DEBUG( interest << " from=" << inFace.getId()
+          << " pitEntry-to=" << outFace.getId() );
 
-      if ( suppressResult == RetxSuppressionResult::FORWARD ) {
+      if( suppressResult == RetxSuppressionResult::FORWARD ) {
         m_retxSuppression.incrementIntervalForOutRecord( *pitEntry->getOutRecord( outFace ) );
       }
 
       ++nEligibleNextHops;
     }
 
-    if ( nEligibleNextHops == 0 && !isSuppressed ) {
+    if( nEligibleNextHops == 0 && !isSuppressed ) {
       NFD_LOG_DEBUG( interest << " from=" << inFace.getId() << " noNextHop" );
 
       lp::NackHeader nackHeader;
-      nackHeader.setReason( lp::NackReason::NO_ROUTE );
-      this->sendNack( pitEntry, inFace, nackHeader );
 
+      nackHeader.setReason( lp::NackReason::NO_ROUTE );
+
+      this->sendNack( pitEntry, inFace, nackHeader );
       this->rejectPendingInterest( pitEntry );
     }
 
     RetxSuppressionResult suppression = m_retxSuppression.decidePerPitEntry( *pitEntry );
 
-    if ( suppression == RetxSuppressionResult::SUPPRESS ) {
+    if( suppression == RetxSuppressionResult::SUPPRESS ) {
       NFD_LOG_DEBUG( interest << " from=" << inFace.getId()
           << " suppressed" );
       return;
@@ -257,8 +224,9 @@ QosStrategy::afterReceiveInterest( const Face& inFace, const Interest& interest,
   } else {
     RetxSuppressionResult suppression = m_retxSuppression.decidePerPitEntry( *pitEntry );
 
-    if ( suppression == RetxSuppressionResult::SUPPRESS ) {
-      NFD_LOG_DEBUG( interest << " from=" << inFace.getId() << " suppressed" );
+    if( suppression == RetxSuppressionResult::SUPPRESS ) {
+      NFD_LOG_DEBUG( interest << " from=" << inFace.getId()
+          << " suppressed" );
       return;
     }
 
@@ -266,69 +234,65 @@ QosStrategy::afterReceiveInterest( const Face& inFace, const Interest& interest,
     const fib::NextHopList& nexthops = fibEntry.getNextHops();
     auto it = nexthops.end();
 
-    if ( suppression == RetxSuppressionResult::NEW ) {
-      // forward to nexthop with lowest cost except downstream
-      int limit = 100;
-
+    if( suppression == RetxSuppressionResult::NEW ) {
+      // Forward to nexthop with lowest cost except downstream.
       it = std::find_if( nexthops.begin(), nexthops.end(), [&] ( const auto& nexthop ) {
-          bool result =  isNextHopEligible( inFace, interest, nexthop, pitEntry, false, time::steady_clock::TimePoint::min(),limit );
-          limit = 100;
-          return result;
+          return isNextHopEligible( inFace, interest, nexthop, pitEntry );
           } );
 
-      if ( it == nexthops.end() ) {
+      if( it == nexthops.end() ) {
         NFD_LOG_DEBUG( interest << " from=" << inFace.getId() << " noNextHop" );
 
         lp::NackHeader nackHeader;
         nackHeader.setReason( lp::NackReason::NO_ROUTE );
-
         this->sendNack( pitEntry, inFace, nackHeader );
-        this->rejectPendingInterest( pitEntry );
 
+        this->rejectPendingInterest( pitEntry );
         return;
       }
 
       Face& outFace = it->getFace();
       uint32_t f = outFace.getId();
       item.outface = &outFace;
-
       m_tx_queue[f].DoEnqueue( item, dscp_value );
 
-      ns3::ndn::NetDeviceTransport* device = dynamic_cast<ns3::ndn::NetDeviceTransport*>( outFace.getTransport() );
-
-      if( device != NULL ) {
-        uint32_t rate = ns3::DynamicCast<ns3::QueueBase>( ns3::DynamicCast<ns3::PointToPointNetDevice>( device->GetNetDevice() )->GetQueue() )->GetNPackets() ;
-      }
-
-      NFD_LOG_DEBUG( interest << " from=" << inFace.getId() << " newPitEntry-to=" << outFace.getId() );
+      NFD_LOG_DEBUG( interest << " from=" << inFace.getId()
+          << " newPitEntry-to=" << outFace.getId() );
       prioritySend();
-
       return;
     }
 
-    // find an unused upstream with lowest cost except downstream
+    // Find an unused upstream with lowest cost except downstream.
     it = std::find_if( nexthops.begin(), nexthops.end(), [&] ( const auto& nexthop ) {
         return isNextHopEligible( inFace, interest, nexthop, pitEntry, true, time::steady_clock::now() );
         } );
 
-    if ( it != nexthops.end() ) {
+    if( it != nexthops.end() ) {
       Face& outFace = it->getFace();
       uint32_t f = outFace.getId();
       item.outface = &outFace;
       m_tx_queue[f].DoEnqueue( item, dscp_value );
 
-      NFD_LOG_DEBUG( interest << " from=" << inFace.getId() << " retransmit-unused-to=" << outFace.getId() );
-      prioritySend();
+      NFD_LOG_DEBUG( interest << " from=" << inFace.getId()
+          << " retransmit-unused-to=" << outFace.getId() );
 
+      prioritySend();
       return;
     }
 
-    // find an eligible upstream that is used earliest
+    // Find an eligible upstream that is used earliest.
     it = findEligibleNextHopWithEarliestOutRecord( inFace, interest, nexthops, pitEntry );
-
-    if ( it == nexthops.end() ) {
+    if( it == nexthops.end() ) {
       NFD_LOG_DEBUG( interest << " from=" << inFace.getId() << " retransmitNoNextHop" );
     } else {
+      Face& outFace = it->getFace();
+      uint32_t f = outFace.getId();
+      item.outface = &outFace;
+      m_tx_queue[f].DoEnqueue( item, dscp_value );
+
+      NFD_LOG_DEBUG( interest << " from=" << inFace.getId()
+          << " retransmit-retry-to=" << outFace.getId() );
+      prioritySend();
       return;
     }
   }
@@ -341,7 +305,6 @@ QosStrategy::afterReceiveNack( const Face& inFace, const lp::Nack& nack,
     const shared_ptr<pit::Entry>& pitEntry )
 {
   return;
-
   struct QueueItem item( &pitEntry );
 
   //std::cout << "***Nack name: " << nack.getInterest().getName() << " Reason: "<<nack.getReason()<< std::endl;
@@ -349,25 +312,26 @@ QosStrategy::afterReceiveNack( const Face& inFace, const lp::Nack& nack,
   std::string s = nack.getInterest().getName().getSubName( 2,1 ).toUri();
   uint32_t dscp_value;
 
-  if ( nack.getInterest().getName().getSubName( 1,1 ).toUri() == "/typeI" )
+  if( nack.getInterest().getName().getSubName( 1,1 ).toUri() == "/typeI"  ) {
     dscp_value = 1;
-  else if ( nack.getInterest().getName().getSubName( 1,1 ).toUri() == "/typeII" )
+  } else if( nack.getInterest().getName().getSubName( 1,1 ).toUri() == "/typeII"  ) {
     dscp_value = 21;
-  else if ( nack.getInterest().getName().getSubName( 1,1 ).toUri() == "/typeIII" )
+  } else if( nack.getInterest().getName().getSubName( 1,1 ).toUri() == "/be"  ) {
     dscp_value = 60;
-  else dscp_value = std::stoi( s.substr( 1 ) );
+  } else {
+    dscp_value = std::stoi( s.substr( 1 ) );
+  }
 
   item.wireEncode = nack.getInterest().wireEncode();
   item.packetType = NACK;
   item.inface = &inFace;
-
   uint32_t f = inFace.getId();
   this->processNack( inFace, nack, pitEntry );
 }
 
 void
 QosStrategy::afterReceiveData( const shared_ptr<pit::Entry>& pitEntry,
-    const Face& inFace, const Data& data )
+                           const Face& inFace, const Data& data )
 {
   struct QueueItem item( &pitEntry );
 
@@ -376,28 +340,30 @@ QosStrategy::afterReceiveData( const shared_ptr<pit::Entry>& pitEntry,
   //std::cout << "***Data name: " << data.getName() << std::endl;
 
   this->beforeSatisfyInterest( pitEntry, inFace, data );
+
   std::string s = data.getName().getSubName( 2,1 ).toUri();
   uint32_t dscp_value;
 
-  if ( data.getName().getSubName( 1,1 ).toUri() == "/typeI" )
+  if( data.getName().getSubName( 1,1 ).toUri() == "/typeI"  ) {
     dscp_value = 1;
-  else if ( data.getName().getSubName( 1,1 ).toUri() == "/typeII" )
+  } else if( data.getName().getSubName( 1,1 ).toUri() == "/typeII"  ) {
     dscp_value = 21;
-  else if ( data.getName().getSubName( 1,1 ).toUri() == "/typeIII" )
+  } else if( data.getName().getSubName( 1,1 ).toUri() == "/be"  ) {
     dscp_value = 60;
-  else dscp_value = std::stoi( s.substr( 1 ) );
+  } else {
+    dscp_value = std::stoi( s.substr( 1 ) );
+  }
 
   item.wireEncode = data.wireEncode();
   item.packetType = DATA;
   item.inface = &inFace;
-  //uint32_t f = inFace.getId();
   std::set<Face*> pendingDownstreams;
   auto now = time::steady_clock::now();
 
   // remember pending downstreams
   for( const pit::InRecord& inRecord : pitEntry->getInRecords() ) {
-    if ( inRecord.getExpiry() > now ) {
-      if ( inRecord.getFace().getId() == inFace.getId() &&
+    if( inRecord.getExpiry() > now ) {
+      if( inRecord.getFace().getId() == inFace.getId() &&
           inRecord.getFace().getLinkType() != ndn::nfd::LINK_TYPE_AD_HOC ) {
         continue;
       }
@@ -409,60 +375,47 @@ QosStrategy::afterReceiveData( const shared_ptr<pit::Entry>& pitEntry,
     uint32_t f = ( *pendingDownstream ).getId();
     item.outface = pendingDownstream;
     m_tx_queue[f].DoEnqueue( item, dscp_value );
+
   }
 
   prioritySend();
 }
 
-
 void
 QosStrategy::prioritySend()
 {
   ns3::Ptr<ns3::Node> node= ns3::NodeContainer::GetGlobal().Get( ns3::Simulator::GetContext() );
-  //std::cout << "\n|||||" << node->GetId()<<"||||||";
   Interest interest;
   Data data;
   lp::Nack nack;
-
   double TOKEN_REQUIRED = 1;
   bool tokenwait = false;
-  //std::cout << "\n|||||" << node->GetId()<<"||||||";
+
   std::unordered_map<uint32_t,NdnPriorityTxQueue >::iterator itt = m_tx_queue.begin();
 
   while( itt != m_tx_queue.end() ) {
-    //std::cout << "\nSend, tokens = ..........." << m_sender1.m_tokens[itt->first] /*( TB.m_tokens - CT.m_tokens )*/ << std::endl;
 
-    Forwarder& fwdr = *( node->GetObject<ns3::ndn::L3Protocol>()->getForwarder() );
-    const Face& outFace = *( fwdr.getFaceTable().get( itt->first ) );
-    ns3::ndn::NetDeviceTransport* device = dynamic_cast<ns3::ndn::NetDeviceTransport*>( outFace.getTransport() );
-    uint32_t rate =25;
+    while( !m_tx_queue[itt->first].IsEmpty() && !tokenwait ) {
 
-    if( device != NULL ) {
-      rate = ns3::DynamicCast<ns3::QueueBase>( ns3::DynamicCast<ns3::PointToPointNetDevice>( device->GetNetDevice() )->GetQueue() )->GetNPackets() ;
-      //std::cout<<"Link size "<< rate<<std::endl;
-    }
-
-    while( !m_tx_queue[itt->first].IsEmpty() && !tokenwait && rate < 25 ) {
       double token1 = CT.sender1[node->GetId()]->m_capacity;
       double token2 = CT.sender2[node->GetId()]->m_capacity;
       double token3 = CT.sender3[node->GetId()]->m_capacity;
 
-      if ( CT.sender1[node->GetId()]->m_tokens.find( itt->first ) != CT.sender1[node->GetId()]->m_tokens.end() )
+      if( CT.sender1[node->GetId()]->m_tokens.find( itt->first ) != CT.sender1[node->GetId()]->m_tokens.end() )
         token1 = CT.sender1[node->GetId()]->m_tokens[itt->first];
-      if ( CT.sender2[node->GetId()]->m_tokens.find( itt->first ) != CT.sender2[node->GetId()]->m_tokens.end() )
+      if( CT.sender2[node->GetId()]->m_tokens.find( itt->first ) != CT.sender2[node->GetId()]->m_tokens.end() )
         token2 = CT.sender2[node->GetId()]->m_tokens[itt->first];
-      if ( CT.sender3[node->GetId()]->m_tokens.find( itt->first ) != CT.sender3[node->GetId()]->m_tokens.end() )
+      if( CT.sender3[node->GetId()]->m_tokens.find( itt->first ) != CT.sender3[node->GetId()]->m_tokens.end() )
         token3 = CT.sender3[node->GetId()]->m_tokens[itt->first];
 
       int choice = m_tx_queue[itt->first].SelectQueueToSend( token1, token2, token3 );
 
-      if ( choice != -1 ) {
+      if( choice != -1 ) {
         TokenBucket *sender;
 
-        if ( choice == 0 ) {
+        if( choice == 0 ) {
           sender = CT.sender1[node->GetId()];
-        } else if ( choice == 1 ) { 
-          sender = CT.sender2[node->GetId()];
+        } else if( choice == 1 ){ sender = CT.sender2[node->GetId()];
         } else {
           sender = CT.sender3[node->GetId()];
         }
@@ -474,24 +427,23 @@ QosStrategy::prioritySend()
         //Dequeue the packet
         struct QueueItem item = m_tx_queue[itt->first].DoDequeue( choice );
         const shared_ptr<pit::Entry>* PE = &( item.pitEntry );
-        rate++;
 
-        switch ( item.packetType ) {
+        switch( item.packetType ) {
+
           case INTEREST:
-            interest.wireDecode( item.wireEncode );
-            //std::cout<<interest.getName()<<"  "<<node->GetId()<<std::endl;
+            interest.wireDecode(  item.wireEncode  );
             prioritySendInterest( *( PE ), *( item.inface ), interest, ( *item.outface ) );
             break;
 
           case DATA:
             //std::cout<<"prioritySend( DATA )\n";
-            data.wireDecode( item.wireEncode );
+            data.wireDecode(  item.wireEncode  );
             prioritySendData( *( PE ), *( item.inface ), data, ( *item.outface ) );
             break;
 
           case NACK:
             //std::cout<<"prioritySend( NACK )\n";
-            interest.wireDecode( item.wireEncode );
+            interest.wireDecode(  item.wireEncode  );
             nack = lp::Nack( interest );
             prioritySendNack( *( PE ), *( item.inface ), nack );
             break;
@@ -500,39 +452,83 @@ QosStrategy::prioritySend()
             //std::cout<<"prioritySend( Invalid Type )\n";
             break;
         }
-        //}
-
       } else {
 
         CT.sender1[node->GetId()]->m_need[itt->first] =  m_tx_queue[itt->first].tokenReqHig();
         CT.sender2[node->GetId()]->m_need[itt->first] =  m_tx_queue[itt->first].tokenReqMid();
         CT.sender3[node->GetId()]->m_need[itt->first] =  m_tx_queue[itt->first].tokenReqLow();
+
         tokenwait = true;
       }
-      itt++;
     }
+
+    itt++;
   }
 }
 
 void
 QosStrategy::prioritySendData( const shared_ptr<pit::Entry>& pitEntry,
-    const Face& inFace, const Data& data, const Face& outFace )
+                            const Face& inFace, const Data& data, const Face& outFace )
 {
   this->sendData( pitEntry, data, outFace );
 }
 
 void
 QosStrategy::prioritySendNack( const shared_ptr<pit::Entry>& pitEntry,
-    const Face& inFace, const lp::Nack& nack )
+                            const Face& inFace, const lp::Nack& nack )
 {
   this->processNack( inFace, nack, pitEntry );
 }
 
 void
 QosStrategy::prioritySendInterest( const shared_ptr<pit::Entry>& pitEntry,
-    const Face& inFace, const Interest& interest, const Face& outFace )
+                            const Face& inFace, const Interest& interest, const Face& outFace )
 {
-  this->sendInterest( pitEntry, *const_pointer_cast<Face>( outFace.shared_from_this() ), interest );
+  /*
+  const fib::Entry& fibEntry = this->lookupFib( *pitEntry );
+  const fib::NextHopList& nexthops = fibEntry.getNextHops();
+  int nEligibleNextHops = 0;
+  bool isSuppressed = false;
+
+  for( const auto& nexthop : nexthops ) {
+    Face& outFace = nexthop.getFace();
+    RetxSuppressionResult suppressResult = m_retxSuppression.decidePerUpstream( *pitEntry, outFace );
+
+    if( suppressResult == RetxSuppressionResult::SUPPRESS ) {
+      NFD_LOG_DEBUG( interest << " from=" << inFace.getId()
+          << "to=" << outFace.getId() << " suppressed" );
+      isSuppressed = true;
+      continue;
+    }
+
+    if( ( outFace.getId() == inFace.getId() && outFace.getLinkType() != ndn::nfd::LINK_TYPE_AD_HOC ) ||
+        wouldViolateScope( inFace, interest, outFace ) ) {
+      continue;
+    }
+    */
+
+    //Face& outface = outFace;
+
+    this->sendInterest( pitEntry, *const_pointer_cast<Face>( outFace.shared_from_this() ), interest );
+
+    /*
+    NFD_LOG_DEBUG( interest << " from=" << inFace.getId()
+        << " pitEntry-to=" << outFace.getId() );
+    if( suppressResult == RetxSuppressionResult::FORWARD ) {
+      m_retxSuppression.incrementIntervalForOutRecord( *pitEntry->getOutRecord( outFace ) );
+    }
+
+    ++nEligibleNextHops;
+  }
+
+  if( nEligibleNextHops == 0 && !isSuppressed ) {
+    NFD_LOG_DEBUG( interest << " from=" << inFace.getId() << " noNextHop" );
+    lp::NackHeader nackHeader;
+    nackHeader.setReason( lp::NackReason::NO_ROUTE );
+    //this->sendNack( pitEntry, inFace, nackHeader );
+    this->rejectPendingInterest( pitEntry );
+  }
+  */
 }
 
 } // namespace fw

@@ -1,19 +1,20 @@
 /* -*- Mode: C++; c-file-style: "gnu"; indent-tabs-mode:nil -*- */
 /*
- * Copyright (c) 2012 University of California, Los Angeles
+ * Copyright ( C ) 2020 New Mexico State University
  *
- * This program is free software; you can redistribute it and/or modify
- * it under the terms of the GNU General Public License version 2 as
- * published by the Free Software Foundation;
- *
+ * George Torres, Anju Kunnumpurathu James
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * ( at your option ) any later version.
+
  * This program is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU General Public License for more details.
- *
+
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  */
 
@@ -35,32 +36,32 @@ namespace fw {
 
 enum QosPacketType
 {
-    INVALID = -1,
-    INTEREST = 0,
-    DATA,
-    NACK
+  INVALID = -1,
+  INTEREST = 0,
+  DATA,
+  NACK
 };
 
 struct QueueItem
 {
-    ndn::Block wireEncode;
-    QosPacketType packetType;
-    shared_ptr<pit::Entry> pitEntry;
-    const Face* inface;
-    const Face* outface;
+  ndn::Block wireEncode;
+  QosPacketType packetType;
+  shared_ptr<pit::Entry> pitEntry;
+  const Face* inface;
+  const Face* outface;
 
-    QueueItem() : wireEncode(0),
-    packetType(INVALID),
-    pitEntry(NULL),
-    inface(NULL),
-    outface(NULL) { }
-    QueueItem(const shared_ptr<pit::Entry>* pe) : wireEncode(0),
-    packetType(INVALID),
-    inface(NULL),
-    outface(NULL) {
-        shared_ptr<pit::Entry> temp(*pe);
-        pitEntry = temp;
-    }
+  QueueItem() : wireEncode( 0 ),
+  packetType( INVALID ),
+  pitEntry( NULL ),
+  inface( NULL ),
+  outface( NULL ) { }
+  QueueItem( const shared_ptr<pit::Entry>* pe ) : wireEncode( 0 ),
+  packetType( INVALID ),
+  inface( NULL ),
+  outface( NULL ) {
+    shared_ptr<pit::Entry> temp( *pe );
+    pitEntry = temp;
+  }
 };
 
 
@@ -69,55 +70,79 @@ class QosQueue
 
 public:
 
-    //constructor
-    QosQueue ();
+  /** \brief Constructor.
+   */
+  QosQueue();
 
-    //Set the queue size
-    void
-    SetMaxQueueSize (uint32_t size);
+  /** \brief Set the max queue size.
+   *  \param size the maximum allowable size of the queue.
+   */
+  void
+  SetMaxQueueSize( uint32_t size );
 
-    //Get queue size
-    uint32_t
-    GetMaxQueueSize () const;
+  /** \brief Get the queue size.
+   */
+  uint32_t
+  GetMaxQueueSize() const;
 
-    void 
-    SetWeight (float weight);
+  /** \brief Set the wieght of the queue for WFQ.
+   *  \param weight the weight of the queue.
+   */
+  void 
+  SetWeight( float weight );
 
-    float
-    GetWeight ();
+  /** \brief Get the current weight of the queue. 
+   */
+  float
+  GetWeight();
 
-    void 
-    SetLastVirtualFinishTime (uint64_t lvft);
+  /** \brief Update the last virtual finish time.
+   *  \param lvft the last virtual finish time.
+   */
+  void 
+  SetLastVirtualFinishTime( uint64_t lvft );
 
-    uint64_t
-    GetLastVirtualFinishTime ();
+  /** \brief Get the last virtual finish time.
+   */
+  uint64_t
+  GetLastVirtualFinishTime();
 
-    bool
-    Enqueue (QueueItem item);
+  /** \brief Push the given packet and corresponding metainfo onto the queue.
+   *  \param Item the packet and its metainfo, incoming face, pit entry, etc.
+   */
+  bool
+  Enqueue( QueueItem item );
 
-    QueueItem
-    Dequeue ();
+  /** \brief Dequeue the packet currently at the top of the queue.
+   */
+  QueueItem
+  Dequeue();
 
-    void
-    DisplayQueue ();
+  /** \brief Print the contents of the queue.
+   */
+  void
+  DisplayQueue();
 
-    //Check whether queue is empty
-    bool
-    IsEmpty () const;
+  /** \brief Check whether queue is empty.
+   */
+  bool
+  IsEmpty() const;
 
-    QueueItem
-    GetFirstElement();
+  /** \brief Get the packet at the top of the queue.
+   */
+  QueueItem
+  GetFirstElement();
 
 public:
 
-    typedef std::list<QueueItem> Queue;
+  typedef std::list<QueueItem> Queue;
 
 private:
 
-    uint32_t m_maxQueueSize;
-    float m_weight;
-    uint64_t m_lastVirtualFinishTime;
-    Queue m_queue;
+  uint32_t m_maxQueueSize;
+  float m_weight;
+  uint64_t m_lastVirtualFinishTime;
+  Queue m_queue;
 };
 
 }// namespace fw

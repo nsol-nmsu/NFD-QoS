@@ -1,154 +1,147 @@
 /* -*- Mode: C++; c-file-style: "gnu"; indent-tabs-mode:nil -*- */
 /*
- * Copyright (c) 2012 University of California, Los Angeles
+ * Copyright ( C ) 2020 New Mexico State University
  *
- * This program is free software; you can redistribute it and/or modify
- * it under the terms of the GNU General Public License version 2 as
- * published by the Free Software Foundation;
- *
+ * George Torres, Anju Kunnumpurathu James
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * ( at your option ) any later version.
+
  * This program is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU General Public License for more details.
- *
+
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  */
 
 #include "ndn-qos-queue.hpp"
 
-NS_LOG_COMPONENT_DEFINE ("ndn.QosQueue");
+NS_LOG_COMPONENT_DEFINE( "ndn.QosQueue" );
 
 namespace nfd {
 namespace fw {
 
 QosQueue::QosQueue()
-    : m_maxQueueSize (QUEUE_SIZE),
-    m_weight(0.0),
-    m_lastVirtualFinishTime(0.0)
+  : m_maxQueueSize( QUEUE_SIZE ),
+  m_weight( 0.0 ),
+  m_lastVirtualFinishTime( 0.0 )
 {
 }
 
 void
-QosQueue::SetMaxQueueSize (uint32_t size)
+QosQueue::SetMaxQueueSize( uint32_t size )
 {
-    m_maxQueueSize = size;
+  m_maxQueueSize = size;
 }
 
 uint32_t
-QosQueue::GetMaxQueueSize () const
+QosQueue::GetMaxQueueSize() const
 {
-    return m_maxQueueSize;
+  return m_maxQueueSize;
 }
 
 void
-QosQueue::SetWeight (float weight)
+QosQueue::SetWeight( float weight )
 {
-    m_weight = weight;
+  m_weight = weight;
 }
 
 float
-QosQueue::GetWeight ()
+QosQueue::GetWeight()
 {
-    return m_weight;
+  return m_weight;
 }
 
 void
-QosQueue::SetLastVirtualFinishTime (uint64_t lvft)
+QosQueue::SetLastVirtualFinishTime( uint64_t lvft )
 {
-    m_lastVirtualFinishTime = lvft;
+  m_lastVirtualFinishTime = lvft;
 }
 
 uint64_t
 QosQueue::GetLastVirtualFinishTime()
 {
-    return m_lastVirtualFinishTime;
+  return m_lastVirtualFinishTime;
 }
 
 bool
-QosQueue::Enqueue (QueueItem item)
+QosQueue::Enqueue( QueueItem item )
 {
-    if (m_queue.size() < GetMaxQueueSize())
-    {
-        //std::cout << "Enqueing Item: "<< endl;
-        //std::cout << "\tWireWncode: " << item.wireEncode;
-        //std::cout << "\tpacketType: " << item.packetType;
-        //std::cout << "\tpitEntry: " << item.pitEntry;
-        //std::cout << "\tinterface: " << item.interface->getId()  << endl;
+  if( m_queue.size() < GetMaxQueueSize() ) {
+    //std::cout << "Enqueing Item: "<< endl;
+    //std::cout << "\tWireWncode: " << item.wireEncode;
+    //std::cout << "\tpacketType: " << item.packetType;
+    //std::cout << "\tpitEntry: " << item.pitEntry;
+    //std::cout << "\tinterface: " << item.interface->getId()  << endl;
 
-        m_queue.push_back(item);
+    m_queue.push_back( item );
 
-    } else
-    {
-        return false;
-        //std::cout << "Enqueue failed. Queue full!!!!" << endl;
-    }
-    return true;
+  } else {
+    return false;
+    //std::cout << "Enqueue failed. Queue full!!!!" << endl;
+  }
+
+  return true;
 }
 
 QueueItem
-QosQueue::Dequeue ()
+QosQueue::Dequeue()
 {
-    struct QueueItem m_item;
-    if (!m_queue.empty())
-    {
-        m_item = m_queue.front();
-        m_queue.pop_front();
+  struct QueueItem m_item;
 
-        //cout << "Dequeing item: " << std::endl;
-        //std::cout << "\tWireWncode: " << m_item.wireEncode;
-        //std::cout << "\tpacketType: " << m_item.packetType;
-        //std::cout << "\tpitEntry: " << m_item.pitEntry;
-        //std::cout << "\tinterface: " << m_item.interface->getId() << std::endl;
-    } else
-    {
-        //cout << "Dequeue failed. Queue is empty!!!" << endl;
-    }
-    return m_item;
+  if( !m_queue.empty() ) {
+
+    m_item = m_queue.front();
+    m_queue.pop_front();
+
+  } else {
+    //cout << "Dequeue failed. Queue is empty!!!" << endl;
+  }
+
+  return m_item;
 }
 
 void 
-QosQueue::DisplayQueue ()
+QosQueue::DisplayQueue()
 {
-    std::cout << "QosQueue::DisplayQueue()" << std::endl;
-    if (!m_queue.empty())
-    {
-            std::cout <<"Queue Items: "<< std::endl;
-            for (auto it = m_queue.cbegin(); it != m_queue.cend(); ++it)
-            {
-                //std::cout << "\tWireWncode: " << it->wireEncode;
-                std::cout << "\tpacketType: " << it->packetType;
-                //std::cout << "\tpitEntry: " << it->pitEntry;
-                std::cout << "\tinterface: " << it->inface->getId() << std::endl;
-            }
-    } else
-    {
-        std::cout << "Queue is empty!!!" << std::endl;
+  std::cout << "QosQueue::DisplayQueue()" << std::endl;
+
+  if( !m_queue.empty() ) {
+
+    std::cout <<"Queue Items: "<< std::endl;
+
+    for( auto it = m_queue.cbegin(); it != m_queue.cend(); ++it ) {
+      std::cout << "\tpacketType: " << it->packetType;
+      std::cout << "\tinterface: " << it->inface->getId() << std::endl;
     }
+
+  } else {
+    std::cout << "Queue is empty!!!" << std::endl;
+  }
 }
 
 bool
-QosQueue::IsEmpty () const
+QosQueue::IsEmpty() const
 {
-    return m_queue.empty ();
+  return m_queue.empty();
 }
 
 QueueItem
 QosQueue::GetFirstElement()
 {
-    struct QueueItem m_item;
+  struct QueueItem m_item;
 
-    if (!m_queue.empty())
-    {
-        m_item = m_queue.front();
-    } else
-    {
-        //std::cout << "Queue is Empty !!!!" << endl;
-    }
+  if( !m_queue.empty() ) {
+    m_item = m_queue.front();
+  } else {
+    //std::cout << "Queue is Empty !!!!" << endl;
+  }
 
-    return m_item;
+  return m_item;
 }
 
 

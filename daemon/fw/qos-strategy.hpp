@@ -1,19 +1,22 @@
 /* -*- Mode:C++; c-file-style:"gnu"; indent-tabs-mode:nil; -*- */
 /**
- * Copyright (c) 2014-2017,  Regents of the University of California,
+ * Copyright ( c ) 2014-2017,  Regents of the University of California,
  *                           Arizona Board of Regents,
  *                           Colorado State University,
  *                           University Pierre & Marie Curie, Sorbonne University,
  *                           Washington University in St. Louis,
  *                           Beijing Institute of Technology,
- *                           The University of Memphis.
+ *                           The University of Memphis,
+ *                           New Mexico State University.
  *
- * This file is part of NFD (Named Data Networking Forwarding Daemon).
+ * Modified by George Torres 2020
+ *
+ * This file is part of NFD ( Named Data Networking Forwarding Daemon ).
  * See AUTHORS.md for complete list of NFD authors and contributors.
  *
  * NFD is free software: you can redistribute it and/or modify it under the terms
  * of the GNU General Public License as published by the Free Software Foundation,
- * either version 3 of the License, or (at your option) any later version.
+ * either version 3 of the License, or ( at your option ) any later version.
  *
  * NFD is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY;
  * without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR
@@ -41,7 +44,7 @@
 namespace nfd {
 namespace fw {
 
-/** \brief indicates the state of a transport
+/** \brief Indicates the state of a transport.
  */
 enum class PacketType {
   INTEREST = 0,
@@ -50,48 +53,67 @@ enum class PacketType {
 };
 
 
-/** \brief a forwarding strategy that forwards Interest to all FIB nexthops
+/** \brief A forwarding strategy that forwards Interest to all FIB nexthops.
  */
 class QosStrategy : public Strategy
-                        , public ProcessNackTraits<QosStrategy>
+                    , public ProcessNackTraits<QosStrategy>
 {
 public:
+
   explicit
-  QosStrategy(Forwarder& forwarder, const Name& name = getStrategyName());
+  QosStrategy( Forwarder& forwarder, const Name& name = getStrategyName() );
 
   static const Name&
   getStrategyName();
 
   void
-  afterReceiveInterest(const Face& inFace, const Interest& interest,
-                       const shared_ptr<pit::Entry>& pitEntry) override;
+  afterReceiveInterest( const Face& inFace, const Interest& interest,
+      const shared_ptr<pit::Entry>& pitEntry ) override;
 
   void
-  afterReceiveNack(const Face& inFace, const lp::Nack& nack,
-                   const shared_ptr<pit::Entry>& pitEntry) override;
+  afterReceiveNack( const Face& inFace, const lp::Nack& nack,
+      const shared_ptr<pit::Entry>& pitEntry ) override;
 
   void
-  afterReceiveData(const shared_ptr<pit::Entry>& pitEntry,
-                   const Face& inFace, const Data& data);
+  afterReceiveData( const shared_ptr<pit::Entry>& pitEntry,
+      const Face& inFace, const Data& data );
 
+  /** \brief Send the given data packet.
+   *  \param pitEntry the corresponding pit entry for the packet.
+   *  \param inface the incoming interface.
+   *  \param data the data packet we will be forwarding.
+   *  \param outFace the outgoing interface.
+   */
   void
-  prioritySendData(const shared_ptr<pit::Entry>& pitEntry,
-                   const Face& inFace, const Data& data, const Face& outFace);
+  prioritySendData( const shared_ptr<pit::Entry>& pitEntry,
+      const Face& inFace, const Data& data, const Face& outFace );
 
+  /** \brief Send the given nack packet.
+   *  \param pitEntry the corresponding pit entry for the packet.
+   *  \param inface the incoming interface.
+   *  \param nack the nack packet we will be forwarding.
+   */
   void
-  prioritySendNack(const shared_ptr<pit::Entry>& pitEntry,
-                   const Face& inFace, const lp::Nack& nack);
+  prioritySendNack( const shared_ptr<pit::Entry>& pitEntry,
+      const Face& inFace, const lp::Nack& nack );
 
+  /** \brief Send the given interest packet.
+   *  \param pitEntry the corresponding pit entry for the packet.
+   *  \param inface the incoming interface.
+   *  \param interest the interest packet we will be forwarding.
+   *  \param outFace the outgoing interface.
+   */
   void
-  prioritySendInterest(const shared_ptr<pit::Entry>& pitEntry,
-                       const Face& inFace, const Interest& interest, const Face& outFace);
+  prioritySendInterest( const shared_ptr<pit::Entry>& pitEntry,
+      const Face& inFace, const Interest& interest, const Face& outFace );
 
+  /** \brief Dequeue all eligible packets from thier respective queues and forward them.
+   */
   void
   prioritySend();
 
 private:
 
-  //NdnPriorityTxQueue m_tx_queue;
   unordered_map<uint32_t, NdnPriorityTxQueue> m_tx_queue;
   friend ProcessNackTraits<QosStrategy>;
   RetxSuppressionExponential m_retxSuppression;
