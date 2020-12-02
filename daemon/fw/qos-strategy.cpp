@@ -360,7 +360,7 @@ QosStrategy::afterReceiveData( const shared_ptr<pit::Entry>& pitEntry,
   std::set<Face*> pendingDownstreams;
   auto now = time::steady_clock::now();
 
-  // remember pending downstreams
+  // Remember pending downstreams
   for( const pit::InRecord& inRecord : pitEntry->getInRecords() ) {
     if( inRecord.getExpiry() > now ) {
       if( inRecord.getFace().getId() == inFace.getId() &&
@@ -424,7 +424,7 @@ QosStrategy::prioritySend()
         sender->consumeToken( TOKEN_REQUIRED, itt->first );
         sender->m_need[itt->first] = 0;
 
-        //Dequeue the packet
+        // Dequeue the packet
         struct QueueItem item = m_tx_queue[itt->first].DoDequeue( choice );
         const shared_ptr<pit::Entry>* PE = &( item.pitEntry );
 
