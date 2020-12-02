@@ -23,9 +23,9 @@
 
 using namespace std;
 
-/** \brief Bucket structure.
+/** \brief Debug class.
  *
- * Keep tracks of hat packets were sent over the simulation.
+ * Keep tracks of the packets were sent over the simulation.
  */
 struct  Bucket {
   int HSent=0;
