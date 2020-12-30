@@ -39,6 +39,15 @@ using namespace std;
 namespace nfd {
 namespace fw {
 
+
+/**
+ * @ingroup ndnQoS
+ * \brief Class defines priority queue.
+ *
+ * Consists of three QoS queues each with different priority levels. 
+ * Makes use of Weighted Fair Queuing algrothrim to process queues. 
+ */
+
 class NdnPriorityTxQueue : private QosQueue
 {
 
@@ -48,56 +57,64 @@ public:
   NdnPriorityTxQueue();
 
   /** \brief Find flow rate of the given queue.
-   *  \param queue the queue for which we will find the flow rate.
+   *  \param queue The queue for which we will find the flow rate.
    */
   float
   GetFlowRate( QosQueue *queue );
 
   /** \brief Update the time of the given packet within the queue.
-   *  \param packet the packet we are updating.
-   *  \param queue the queue which has the packet of interest.
+   *  \param packet The packet we are updating.
+   *  \param queue The queue which has the packet we want to update.
    */
   void
   UpdateTime( ndn::Block packet, QosQueue *queue );
 
   /** \brief Use WFQ algorithm to select the next queue to send from taking the token count into account.
-   *  \param highTokens the number of tokens the high priorty queue has.
-   *  \param midTokens the number of tokens the mid priorty queue has.
-   *  \param lowTokens the number of tokens the low priorty queue has.
+   *  \param highTokens The number of tokens the high priorty queue has.
+   *  \param midTokens The number of tokens the mid priorty queue has.
+   *  \param lowTokens The number of tokens the low priorty queue has.
    */
   int
   SelectQueueToSend( double highTokens, double midTokens, double lowTokens );
 
-  /** \brief Push the given packet and corresponding metainfo onto a queue.
-   *  \param item the packet and its metainfo, incoming face, pit entry, etc.
-   *  \param dscp_value the value which determins packet priorty.
+  /** \brief Push the given packet and corresponding meta info onto a queue.
+   *  \param item The packet and its metainfo, incoming face, pit entry, etc.
+   *  \param pr_level The value which determins packet priorty.
    */
   bool
-  DoEnqueue( QueueItem item, uint32_t dscp_value );
+  DoEnqueue( QueueItem item, uint32_t pr_level );
 
   /** \brief Dequeue a packet from the indicated queue.
-   *  \param choice an int value repersenting one of the three queues.
+   *  \param choice An int value repersenting one of the three queues.
    */
   QueueItem
   DoDequeue( int choice );
 
+  /** \brief Check if all queues are empty.
+   */
   bool
   IsEmpty();
 
+  /** \brief Tokens required for high priority queue. 
+   */
   int
   tokenReqHig();
 
+  /** \brief Tokens required for medium priority queue.
+   */
   int
   tokenReqMid();
 
+  /** \brief Tokens required for low priority queue.
+   */  
   int
   tokenReqLow();
 
 public:
 
-  QosQueue m_highPriorityQueue;
-  QosQueue m_mediumPriorityQueue;
-  QosQueue m_lowPriorityQueue;
+  QosQueue m_highPriorityQueue; //< @brief High priority Queue. 
+  QosQueue m_mediumPriorityQueue; //< @brief Medium priority Queue.
+  QosQueue m_lowPriorityQueue;//< @brief Low priority Queue.
 };
 
 }// namespace fw

@@ -50,7 +50,6 @@ wouldViolateScope(const Face& inFace, const Interest& interest, const Face& outF
  *  \note This algorithm has a weakness that it does not permit consumer retransmissions
  *        before out-record expires. Therefore, it's not recommended to use this function
  *        in new strategies.
- *  \todo find a better name for this function
  */
 bool
 canForwardToLegacy(const pit::Entry& pitEntry, const Face& face);

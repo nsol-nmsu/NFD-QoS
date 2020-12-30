@@ -89,15 +89,15 @@ NdnPriorityTxQueue::SelectQueueToSend( double highTokens, double midTokens, doub
 }
 
 bool
-NdnPriorityTxQueue::DoEnqueue( QueueItem item, uint32_t dscp_value )
+NdnPriorityTxQueue::DoEnqueue( QueueItem item, uint32_t pr_level )
 {
   QosQueue *queue;
 
-  if( dscp_value >= 1 && dscp_value <= 20 ) {
+  if( pr_level >= 1 && pr_level <= 20 ) {
     queue = &m_highPriorityQueue;
-  } else if( dscp_value >= 21 && dscp_value <= 40 ) {
+  } else if( pr_level >= 21 && pr_level <= 40 ) {
     queue = &m_mediumPriorityQueue;
-  }else if( dscp_value >= 41 && dscp_value <= 64 ) {
+  }else if( pr_level >= 41 && pr_level <= 64 ) {
     queue = &m_lowPriorityQueue;
   } else {
     return false;

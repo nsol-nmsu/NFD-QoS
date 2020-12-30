@@ -29,7 +29,9 @@
 namespace nfd {
 namespace fw {
 
-/** \brief Helps os-stratagey keep track of token operations.
+/** 
+ * @ingroup ndnQoS 
+ * \brief Defines token bucket for use in QoS-strategy.
  */
 class TokenBucket
 {
@@ -37,19 +39,19 @@ public:
 
   TokenBucket();
 
-  /** \brief Update strategy that token bucket has refilled.
+  /** \brief Inform strategy that token bucket has refilled.
    */
   signal::Signal<TokenBucket>
   send;
 
-  /** \brief Increment token counts in buckets if they are not currently at capacity.
+  /** \brief Increment token count in buckets if they are not currently at capacity.
    */
   void
   addToken();
 
   /** \brief Remove tokens from token bucket for the given interface.
-   *  \param tokens amount of tokens to remove.
-   *  \param face interface on which to remove tokens from.
+   *  \param tokens Amount of tokens to remove.
+   *  \param face Interface on which to remove tokens from.
    */
   void
   consumeToken( double tokens, uint32_t face );

@@ -36,6 +36,11 @@ using namespace std;
 namespace nfd {
 namespace fw {
 
+
+/**
+ * \brief Enumerator used to describe packet type.
+ */
+	
 enum QosPacketType
 {
   INVALID = -1,
@@ -43,6 +48,14 @@ enum QosPacketType
   DATA,
   NACK
 };
+
+
+
+/**
+ * \brief Defines queue item for use qos queues.
+ *
+ * Saves packet details, such as block representation, incoming interface, type, etc.
+ */
 
 struct QueueItem
 {
@@ -67,6 +80,12 @@ struct QueueItem
 };
 
 
+/**
+ * @ingroup ndnQoS
+ * \brief Class that implements QoS queue for ndn packets.
+ *
+ */
+
 class QosQueue
 {
 
@@ -77,7 +96,7 @@ public:
   QosQueue();
 
   /** \brief Set the max queue size.
-   *  \param size the maximum allowable size of the queue.
+   *  \param size The maximum allowable size of the queue.
    */
   void
   SetMaxQueueSize( uint32_t size );
@@ -88,7 +107,7 @@ public:
   GetMaxQueueSize() const;
 
   /** \brief Set the wieght of the queue for WFQ.
-   *  \param weight the weight of the queue.
+   *  \param weight The weight of the queue.
    */
   void 
   SetWeight( float weight );
@@ -99,7 +118,7 @@ public:
   GetWeight();
 
   /** \brief Update the last virtual finish time.
-   *  \param lvft the last virtual finish time.
+   *  \param lvft The last virtual finish time.
    */
   void 
   SetLastVirtualFinishTime( uint64_t lvft );
@@ -110,7 +129,7 @@ public:
   GetLastVirtualFinishTime();
 
   /** \brief Push the given packet and corresponding metainfo onto the queue.
-   *  \param Item the packet and its metainfo, incoming face, pit entry, etc.
+   *  \param Item The packet and its metainfo, incoming face, pit entry, etc.
    */
   bool
   Enqueue( QueueItem item );
@@ -137,14 +156,14 @@ public:
 
 public:
 
-  typedef std::list<QueueItem> Queue;
+  typedef std::list<QueueItem> Queue; ///< @brief Defines basic queue structure.
 
 private:
 
-  uint32_t m_maxQueueSize;
-  float m_weight;
-  uint64_t m_lastVirtualFinishTime;
-  Queue m_queue;
+  uint32_t m_maxQueueSize; ///< @brief Maximum size for the queue.
+  float m_weight; ///< @brief Queue weight for use in WFQ.
+  uint64_t m_lastVirtualFinishTime; ///< @brief The estimated time needed to dequeue all packets. 
+  Queue m_queue; //< @brief Queue object
 };
 
 }// namespace fw

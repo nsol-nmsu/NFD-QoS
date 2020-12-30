@@ -38,7 +38,7 @@
 namespace nfd {
 namespace fw {
 
-/** \brief Indicates the state of a transport.
+/** \brief Enumerator used to indicate packet type.
  */
 enum class PacketType {
   INTEREST = 0,
@@ -47,7 +47,14 @@ enum class PacketType {
 };
 
 
-/** \brief A forwarding strategy that forwards Interest to all FIB nexthops.
+/** 
+ * @ingroup ndnQoS
+ * \brief A forwarding strategy that uses WFQ to forward packets based on priority to enable QoS.
+ *
+ * Packets uses a hybrid approach, where high and medium priority packets are multicasted, 
+ * while low priority level packets are unicasted. 
+ * Each interface has three queues, one for each priority level. As packets arrive they
+ * are enqueued onto the corresponding queue based on priority at the outgoing interface.
  */
 class QosStrategy : public Strategy
                     , public ProcessNackTraits<QosStrategy>
@@ -73,47 +80,47 @@ public:
       const Face& inFace, const Data& data );
 
   /** \brief Send the given data packet.
-   *  \param pitEntry the corresponding pit entry for the packet.
-   *  \param inface the incoming interface.
-   *  \param data the data packet we will be forwarding.
-   *  \param outFace the outgoing interface.
+   *  \param pitEntry The corresponding pit entry for the packet.
+   *  \param inface The incoming interface.
+   *  \param data The data packet we will be forwarding.
+   *  \param outFace The outgoing interface.
    */
   void
   prioritySendData( const shared_ptr<pit::Entry>& pitEntry,
       const Face& inFace, const Data& data, const Face& outFace );
 
   /** \brief Send the given nack packet.
-   *  \param pitEntry the corresponding pit entry for the packet.
-   *  \param inface the incoming interface.
-   *  \param nack the nack packet we will be forwarding.
+   *  \param pitEntry The corresponding pit entry for the packet.
+   *  \param inface The incoming interface.
+   *  \param nack The nack packet we will be forwarding.
    */
   void
   prioritySendNack( const shared_ptr<pit::Entry>& pitEntry,
       const Face& inFace, const lp::Nack& nack );
 
   /** \brief Send the given interest packet.
-   *  \param pitEntry the corresponding pit entry for the packet.
-   *  \param inface the incoming interface.
-   *  \param interest the interest packet we will be forwarding.
-   *  \param outFace the outgoing interface.
+   *  \param pitEntry The corresponding pit entry for the packet.
+   *  \param inface The incoming interface.
+   *  \param interest The interest packet we will be forwarding.
+   *  \param outFace The outgoing interface.
    */
   void
   prioritySendInterest( const shared_ptr<pit::Entry>& pitEntry,
       const Face& inFace, const Interest& interest, const Face& outFace );
 
-  /** \brief Dequeue all eligible packets from thier respective queues and forward them.
+  /** \brief Dequeue all eligible packets from respective queues and forward them.
    */
   void
   prioritySend();
 
 private:
 
-  unordered_map<uint32_t, NdnPriorityTxQueue> m_tx_queue;
+  unordered_map<uint32_t, NdnPriorityTxQueue> m_tx_queue; //< @brief Hashtable that maps interface to their respective queues.
   friend ProcessNackTraits<QosStrategy>;
   RetxSuppressionExponential m_retxSuppression;
-  TokenBucket m_sender1;
-  TokenBucket m_sender2;
-  TokenBucket m_sender3;
+  TokenBucket m_sender1; //< @brief Used to provide references to high priority token buckets to application layer.
+  TokenBucket m_sender2; //< @brief Used to provide references to medium priority token buckets to application layer.
+  TokenBucket m_sender3; //< @brief Used to provide references to low priority token buckets to application layer.
   int packetsDropped = 0;
 
 PUBLIC_WITH_TESTS_ELSE_PRIVATE:

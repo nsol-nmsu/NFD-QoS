@@ -23,8 +23,8 @@
 #include "qos-strategy.hpp"
 #include "algorithm.hpp"
 #include "core/logger.hpp"
-#include "../../../apps/ConsumedTokens.cpp"
-#include "TBucket.hpp"
+#include "../../../apps/TBucketRef.cpp"
+#include "TBucketDebug.hpp"
 #include "ns3/simulator.h"
 #include "../../../helper/ndn-scenario-helper.hpp"
 
@@ -145,23 +145,23 @@ QosStrategy::afterReceiveInterest( const Face& inFace, const Interest& interest,
 {
   struct QueueItem item( &pitEntry );
   std::string s = interest.getName().getSubName( 2,1 ).toUri();
-  uint32_t dscp_value;
+  uint32_t pr_level;
 
   if( interest.getName().getSubName( 1,1 ).toUri() == "/typeI"  ) {
-    dscp_value = 1;
+    pr_level = 1;
   } else if( interest.getName().getSubName( 1,1 ).toUri() == "/typeII"  ) {
-    dscp_value = 21;
+    pr_level = 21;
   } else if( interest.getName().getSubName( 1,1 ).toUri() == "/be"  ) {
-    dscp_value = 60;
+    pr_level = 60;
   } else {
-    dscp_value = std::stoi( s.substr( 1 ) );
+    pr_level = std::stoi( s.substr( 1 ) );
   }
 
   item.wireEncode = interest.wireEncode();
   item.packetType = INTEREST;
   item.inface = &inFace;
 
-  if( dscp_value != 60  ) {
+  if( pr_level != 60  ) {
     const fib::Entry& fibEntry = this->lookupFib( *pitEntry );
     const fib::NextHopList& nexthops = fibEntry.getNextHops();
     int nEligibleNextHops = 0;
@@ -186,7 +186,7 @@ QosStrategy::afterReceiveInterest( const Face& inFace, const Interest& interest,
       uint32_t f = outFace.getId();
       item.outface = &outFace;
 
-      m_tx_queue[f].DoEnqueue( item, dscp_value );
+      m_tx_queue[f].DoEnqueue( item, pr_level );
 
       NFD_LOG_DEBUG( interest << " from=" << inFace.getId()
           << " pitEntry-to=" << outFace.getId() );
@@ -249,7 +249,7 @@ QosStrategy::afterReceiveInterest( const Face& inFace, const Interest& interest,
       Face& outFace = it->getFace();
       uint32_t f = outFace.getId();
       item.outface = &outFace;
-      m_tx_queue[f].DoEnqueue( item, dscp_value );
+      m_tx_queue[f].DoEnqueue( item, pr_level );
 
       NFD_LOG_DEBUG( interest << " from=" << inFace.getId()
           << " newPitEntry-to=" << outFace.getId() );
@@ -266,7 +266,7 @@ QosStrategy::afterReceiveInterest( const Face& inFace, const Interest& interest,
       Face& outFace = it->getFace();
       uint32_t f = outFace.getId();
       item.outface = &outFace;
-      m_tx_queue[f].DoEnqueue( item, dscp_value );
+      m_tx_queue[f].DoEnqueue( item, pr_level );
 
       NFD_LOG_DEBUG( interest << " from=" << inFace.getId()
           << " retransmit-unused-to=" << outFace.getId() );
@@ -283,7 +283,7 @@ QosStrategy::afterReceiveInterest( const Face& inFace, const Interest& interest,
       Face& outFace = it->getFace();
       uint32_t f = outFace.getId();
       item.outface = &outFace;
-      m_tx_queue[f].DoEnqueue( item, dscp_value );
+      m_tx_queue[f].DoEnqueue( item, pr_level );
 
       NFD_LOG_DEBUG( interest << " from=" << inFace.getId()
           << " retransmit-retry-to=" << outFace.getId() );
@@ -305,16 +305,16 @@ QosStrategy::afterReceiveNack( const Face& inFace, const lp::Nack& nack,
   //std::cout << "***Nack name: " << nack.getInterest().getName() << " Reason: "<<nack.getReason()<< std::endl;
 
   std::string s = nack.getInterest().getName().getSubName( 2,1 ).toUri();
-  uint32_t dscp_value;
+  uint32_t pr_level;
 
   if( nack.getInterest().getName().getSubName( 1,1 ).toUri() == "/typeI"  ) {
-    dscp_value = 1;
+    pr_level = 1;
   } else if( nack.getInterest().getName().getSubName( 1,1 ).toUri() == "/typeII"  ) {
-    dscp_value = 21;
+    pr_level = 21;
   } else if( nack.getInterest().getName().getSubName( 1,1 ).toUri() == "/be"  ) {
-    dscp_value = 60;
+    pr_level = 60;
   } else {
-    dscp_value = std::stoi( s.substr( 1 ) );
+    pr_level = std::stoi( s.substr( 1 ) );
   }
 
   item.wireEncode = nack.getInterest().wireEncode();
@@ -337,16 +337,16 @@ QosStrategy::afterReceiveData( const shared_ptr<pit::Entry>& pitEntry,
   this->beforeSatisfyInterest( pitEntry, inFace, data );
 
   std::string s = data.getName().getSubName( 2,1 ).toUri();
-  uint32_t dscp_value;
+  uint32_t pr_level;
 
   if( data.getName().getSubName( 1,1 ).toUri() == "/typeI"  ) {
-    dscp_value = 1;
+    pr_level = 1;
   } else if( data.getName().getSubName( 1,1 ).toUri() == "/typeII"  ) {
-    dscp_value = 21;
+    pr_level = 21;
   } else if( data.getName().getSubName( 1,1 ).toUri() == "/be"  ) {
-    dscp_value = 60;
+    pr_level = 60;
   } else {
-    dscp_value = std::stoi( s.substr( 1 ) );
+    pr_level = std::stoi( s.substr( 1 ) );
   }
 
   item.wireEncode = data.wireEncode();
@@ -369,7 +369,7 @@ QosStrategy::afterReceiveData( const shared_ptr<pit::Entry>& pitEntry,
   for( const Face* pendingDownstream : pendingDownstreams ) {
     uint32_t f = ( *pendingDownstream ).getId();
     item.outface = pendingDownstream;
-    m_tx_queue[f].DoEnqueue( item, dscp_value );
+    m_tx_queue[f].DoEnqueue( item, pr_level );
 
   }
 
