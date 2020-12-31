@@ -1,6 +1,6 @@
 /* -*- Mode: C++; c-file-style: "gnu"; indent-tabs-mode:nil -*- */
 /*
- * Copyright ( C ) 2020 New Mexico State University
+ * Copyright ( C ) 2020 New Mexico State University- Board of Regents
  *
  * George Torres, Anju Kunnumpurathu James
  * See AUTHORS.md for complete list of authors and contributors.

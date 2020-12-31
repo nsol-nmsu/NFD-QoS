@@ -1,6 +1,6 @@
 /* -*- Mode: C++; c-file-style: "gnu"; indent-tabs-mode:nil -*- */
 /*
- * Copyright (  C  ) 2020 New Mexico State University
+ * Copyright (  C  ) 2020 New Mexico State University- Board of Regents 
  *
  * George Torres, Anju Kunnumpurathu James
  * See AUTHORS.md for complete list of authors and contributors.
@@ -57,7 +57,7 @@ public:
   NdnPriorityTxQueue();
 
   /** \brief Find flow rate of the given queue.
-   *  \param queue The queue for which we will find the flow rate.
+   *  \param queue The queue form which we will obtain the flow rate.
    */
   float
   GetFlowRate( QosQueue *queue );
