@@ -151,10 +151,10 @@ QosStrategy::afterReceiveInterest( const Face& inFace, const Interest& interest,
     pr_level = 1;
   } else if( interest.getName().getSubName( 1,1 ).toUri() == "/typeII"  ) {
     pr_level = 21;
-  } else if( interest.getName().getSubName( 1,1 ).toUri() == "/be"  ) {
+  } else if( interest.getName().getSubName( 1,1 ).toUri() == "/typeIII"  ) {
     pr_level = 60;
   } else {
-    pr_level = std::stoi( s.substr( 1 ) );
+    pr_level = 60;
   }
 
   item.wireEncode = interest.wireEncode();
@@ -314,7 +314,7 @@ QosStrategy::afterReceiveNack( const Face& inFace, const lp::Nack& nack,
   } else if( nack.getInterest().getName().getSubName( 1,1 ).toUri() == "/be"  ) {
     pr_level = 60;
   } else {
-    pr_level = std::stoi( s.substr( 1 ) );
+    pr_level = 60;
   }
 
   item.wireEncode = nack.getInterest().wireEncode();
@@ -346,7 +346,7 @@ QosStrategy::afterReceiveData( const shared_ptr<pit::Entry>& pitEntry,
   } else if( data.getName().getSubName( 1,1 ).toUri() == "/be"  ) {
     pr_level = 60;
   } else {
-    pr_level = std::stoi( s.substr( 1 ) );
+    pr_level = 60;
   }
 
   item.wireEncode = data.wireEncode();

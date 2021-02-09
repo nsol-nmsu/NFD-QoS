@@ -141,7 +141,7 @@ int
 NdnPriorityTxQueue::tokenReqHig()
 {
   if( m_highPriorityQueue.IsEmpty() == false ) {
-    return 7;
+    return 1;
   }
 
   return 0;
@@ -151,7 +151,7 @@ int
 NdnPriorityTxQueue::tokenReqMid()
 {
   if( m_mediumPriorityQueue.IsEmpty() == false ) {
-    return 6;
+    return 1;
   }
 
   return 0;
@@ -161,7 +161,7 @@ int
 NdnPriorityTxQueue::tokenReqLow()
 {
   if( m_lowPriorityQueue.IsEmpty() == false ) {
-    return 5;
+    return 1;
   }
 
   return 0;

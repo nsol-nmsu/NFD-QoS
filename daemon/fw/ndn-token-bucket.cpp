@@ -36,9 +36,7 @@ TokenBucket::addToken()
 { 
   std::unordered_map<uint32_t,double >::iterator itt = m_tokens.begin();
   bool callsend = false;
-
   while(itt != m_tokens.end()) {
-
     if (itt->second < m_capacity) {
       m_tokens[itt->first]++;
     }

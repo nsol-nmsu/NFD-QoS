@@ -142,7 +142,7 @@ BestRouteStrategy2::afterReceiveInterest(const Face& inFace, const Interest& int
   auto it = nexthops.end();
 
 
-  int node= ns3::NodeContainer::GetGlobal().Get(ns3::Simulator::GetContext())->GetId();
+  //int node= ns3::NodeContainer::GetGlobal().Get(ns3::Simulator::GetContext())->GetId();
   if (suppression == RetxSuppressionResult::NEW) {
     // forward to nexthop with lowest cost except downstream
     it = std::find_if(nexthops.begin(), nexthops.end(), [&] (const auto& nexthop) {
