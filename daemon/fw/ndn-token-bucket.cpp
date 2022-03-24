@@ -21,6 +21,8 @@
  */
 
 #include "ndn-token-bucket.hpp"
+#include "ns3/simulator.h"
+#include "../../../helper/ndn-scenario-helper.hpp"
 
 namespace nfd {
 namespace fw {
@@ -28,6 +30,7 @@ namespace fw {
 TokenBucket::TokenBucket()
 {
     m_capacity = 0;
+    m_atCapacity = false;
     hasFaces = false;
 }
 
@@ -36,8 +39,10 @@ TokenBucket::addToken()
 { 
   std::unordered_map<uint32_t,double >::iterator itt = m_tokens.begin();
   bool callsend = false;
+  m_atCapacity = true;
   while(itt != m_tokens.end()) {
     if (itt->second < m_capacity) {
+      m_atCapacity = false;
       m_tokens[itt->first]++;
     }
 
@@ -47,7 +52,10 @@ TokenBucket::addToken()
 
     itt++;
   }
-  send();
+  ns3::Ptr<ns3::Node> node= ns3::NodeContainer::GetGlobal().Get( ns3::Simulator::GetContext() );
+  if(callsend){
+  	send();
+  }
 }
 
 void
@@ -58,6 +66,10 @@ TokenBucket::consumeToken(double tokens, uint32_t face)
   }
 
   m_tokens[face] = m_tokens[face] - tokens;
+  if(m_atCapacity){
+     m_atCapacity = false;
+     noLongerAtCapacity();
+  }
 }
 
 

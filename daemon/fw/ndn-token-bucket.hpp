@@ -44,6 +44,9 @@ public:
   signal::Signal<TokenBucket>
   send;
 
+  signal::Signal<TokenBucket>
+  noLongerAtCapacity;
+
   /** \brief Increment token count in buckets if they are not currently at capacity.
    */
   void
@@ -56,7 +59,13 @@ public:
   void
   consumeToken( double tokens, uint32_t face );
 
+  bool 
+  atCapacity(){
+     return m_atCapacity;
+  };
+
   bool hasFaces;
+  bool m_atCapacity;
   std::unordered_map<uint32_t, double> m_tokens;
   std::unordered_map<uint32_t, double> m_need;
   int m_capacity;
