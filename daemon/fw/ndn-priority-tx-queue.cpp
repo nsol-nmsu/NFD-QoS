@@ -29,15 +29,25 @@ namespace fw {
 
 NdnPriorityTxQueue::NdnPriorityTxQueue()
 {
-  m_highPriorityQueue.SetWeight( 3 );
-  m_mediumPriorityQueue.SetWeight( 2 );
-  m_lowPriorityQueue.SetWeight( 1 );
 }
+
+void
+NdnPriorityTxQueue::initialize(int queues){
+  for (int i = 0; i < queues; i++){
+     m_priorityQueues.push_back(QosQueue());
+     m_priorityQueues[i].SetWeight(queues-i);
+  }
+  totalQueues=queues;
+}
+
 
 float 
 NdnPriorityTxQueue::GetFlowRate( QosQueue *queue )
 {
-  float total_weight = m_highPriorityQueue.GetWeight() + m_lowPriorityQueue.GetWeight() + m_mediumPriorityQueue.GetWeight();
+  float total_weight = 0;
+  for  (int i = 0; i < totalQueues; i++){
+     total_weight += m_priorityQueues[i].GetWeight();
+  }
   float flowRate = queue->GetWeight() / total_weight;
 
   return flowRate;
@@ -54,37 +64,21 @@ NdnPriorityTxQueue::UpdateTime( ndn::Block packet, QosQueue *queue )
 }
 
 int
-NdnPriorityTxQueue::SelectQueueToSend( double highTokens, double midTokens, double lowTokens )
+NdnPriorityTxQueue::SelectQueueToSend( vector<double> tokens )
 {
   int squeue = -1;
-  QosQueue* selected_queue = &m_highPriorityQueue;
+  QosQueue* selected_queue = &m_priorityQueues[0];
   float minVirtualFinishTime = std::numeric_limits<float>::max();
-
-  if( m_highPriorityQueue.IsEmpty() == false && highTokens >= 1 ) {
-    minVirtualFinishTime = m_highPriorityQueue.GetLastVirtualFinishTime();
-    selected_queue = &m_highPriorityQueue;
-    squeue = 0;
+  //vector<double> tokens = {highTokens, midTokens, lowTokens};
+  for  (int i = 0; i < totalQueues; i++){
+    if( m_priorityQueues[i].IsEmpty() == false && tokens[i] >= 1 ) {
+       if( minVirtualFinishTime > m_priorityQueues[i].GetLastVirtualFinishTime() ) {	    
+          minVirtualFinishTime = m_priorityQueues[i].GetLastVirtualFinishTime();
+          selected_queue = &m_priorityQueues[i];
+          squeue = i;
+       }
+     }
   }
-
-  if( m_mediumPriorityQueue.IsEmpty() == false && midTokens >= 1 ) {
-
-    if( minVirtualFinishTime > m_mediumPriorityQueue.GetLastVirtualFinishTime() ) {
-      minVirtualFinishTime = m_mediumPriorityQueue.GetLastVirtualFinishTime();
-      selected_queue = &m_mediumPriorityQueue;
-      squeue = 1;
-
-    }
-  }
-
-  if( m_lowPriorityQueue.IsEmpty() == false && lowTokens >= 1 ) {
-
-    if( minVirtualFinishTime > m_lowPriorityQueue.GetLastVirtualFinishTime() ) {
-      minVirtualFinishTime = m_lowPriorityQueue.GetLastVirtualFinishTime();
-      selected_queue = &m_lowPriorityQueue;
-      squeue = 2;
-    }
-  }
-
   return squeue;
 }
 
@@ -92,21 +86,12 @@ bool
 NdnPriorityTxQueue::DoEnqueue( QueueItem item, uint32_t pr_level )
 {
   QosQueue *queue;
-
-  if( pr_level >= 1 && pr_level <= 20 ) {
-    queue = &m_highPriorityQueue;
-  } else if( pr_level >= 21 && pr_level <= 40 ) {
-    queue = &m_mediumPriorityQueue;
-  }else if( pr_level >= 41 && pr_level <= 64 ) {
-    queue = &m_lowPriorityQueue;
-  } else {
-    return false;
-  }
-
+  queue = &m_priorityQueues[pr_level];
   if( queue->Enqueue( item ) ) {
     UpdateTime( item.wireEncode, queue );
     return true;
-  } else {
+  } 
+  else {
     return false;
   }
 }
@@ -116,14 +101,8 @@ NdnPriorityTxQueue::DoDequeue( int choice )
 {
   QueueItem item;
 
-  if( ( !m_highPriorityQueue.IsEmpty() || ( !m_mediumPriorityQueue.IsEmpty() ) || ( !m_lowPriorityQueue.IsEmpty() ) ) ) {
-
-    if( choice == 0 ) {
-      item = m_highPriorityQueue.Dequeue();
-    } else if( choice == 1 ) {
-      item = m_mediumPriorityQueue.Dequeue();
-    } else { item = m_lowPriorityQueue.Dequeue();
-    }
+  if( !IsEmpty() ) {
+     item = m_priorityQueues[choice].Dequeue();
   } else {
     //std::cout << "DoDequeue failed. All queues are empty !!!!" << std::endl;
   }
@@ -134,38 +113,24 @@ NdnPriorityTxQueue::DoDequeue( int choice )
 bool
 NdnPriorityTxQueue::IsEmpty()
 {
-  return ( m_highPriorityQueue.IsEmpty() && m_mediumPriorityQueue.IsEmpty() && m_lowPriorityQueue.IsEmpty() );
+
+  bool empty = true; 
+  for  (int i = 0; i < totalQueues; i++){
+     empty = empty &&  m_priorityQueues[i].IsEmpty();
+  }
+  return empty;
 }
 
 int
-NdnPriorityTxQueue::tokenReqHig()
+NdnPriorityTxQueue::tokenReq(int bucket)
 {
-  if( m_highPriorityQueue.IsEmpty() == false ) {
+  if( m_priorityQueues[bucket].IsEmpty() == false ) {
     return 1;
   }
 
   return 0;
 }
 
-int
-NdnPriorityTxQueue::tokenReqMid()
-{
-  if( m_mediumPriorityQueue.IsEmpty() == false ) {
-    return 1;
-  }
-
-  return 0;
-}
-
-int
-NdnPriorityTxQueue::tokenReqLow()
-{
-  if( m_lowPriorityQueue.IsEmpty() == false ) {
-    return 1;
-  }
-
-  return 0;
-}
 
 } // namespace ndn
 } // namespace ns3

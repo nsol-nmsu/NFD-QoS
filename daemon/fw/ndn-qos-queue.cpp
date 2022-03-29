@@ -84,7 +84,6 @@ QosQueue::Enqueue( QueueItem item )
 
   } else {
     return false;
-    //std::cout << "Enqueue failed. Queue full!!!!" << endl;
   }
 
   return true;

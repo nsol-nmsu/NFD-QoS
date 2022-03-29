@@ -20,10 +20,10 @@
  *
  */
 
-#include "qos-strategy-2.hpp"
+#include "qos-strategy.hpp"
 #include "algorithm.hpp"
 #include "core/logger.hpp"
-#include "../../../apps/TBucketRef.cpp"
+#include "../../../apps/TBucketRef.hpp"
 #include "TBucketDebug.hpp"
 #include "ns3/simulator.h"
 #include "../../../helper/ndn-scenario-helper.hpp"
@@ -40,21 +40,21 @@
 namespace nfd {
 namespace fw {
 
-NFD_REGISTER_STRATEGY( QosStrategy2 );
+NFD_REGISTER_STRATEGY( QosStrategy );
 
-NFD_LOG_INIT( QosStrategy2 );
+NFD_LOG_INIT( QosStrategy );
 
-const time::milliseconds QosStrategy2::RETX_SUPPRESSION_INITIAL( 10 );
-const time::milliseconds QosStrategy2::RETX_SUPPRESSION_MAX( 250 );
+const time::milliseconds QosStrategy::RETX_SUPPRESSION_INITIAL( 10 );
+const time::milliseconds QosStrategy::RETX_SUPPRESSION_MAX( 250 );
 
-QosStrategy2::QosStrategy2( Forwarder& forwarder, const Name& name )
+QosStrategy::QosStrategy( Forwarder& forwarder, const Name& name )
   : Strategy( forwarder )
   , ProcessNackTraits( this )
   , m_retxSuppression( RETX_SUPPRESSION_INITIAL,
                       RetxSuppressionExponential::DEFAULT_MULTIPLIER,
                       RETX_SUPPRESSION_MAX )
 {
-  CT.m_tokens = 0;
+  //CT.m_tokens = 0;
   ParsedInstanceName parsed = parseInstanceName( name );
 
   if( !parsed.parameters.empty() ) {
@@ -67,32 +67,34 @@ QosStrategy2::QosStrategy2( Forwarder& forwarder, const Name& name )
   }
 
   this->setInstanceName( makeInstanceName( name, getStrategyName() ) );
+  forwarder.beforeExpirePendingInterest.connect([this](const pit::Entry& entry){
+       this->beforeExpirePendingInterest(entry);
+  });
+  setSuccessReqs({1.0, 1.0, 0.4});
+}
 
+void
+QosStrategy::setUp(){
   int node= ns3::NodeContainer::GetGlobal().Get( ns3::Simulator::GetContext() )->GetId();
-
-  if(!CT.hasSender[node]){
-     CT.sender1[node] = &m_sender1;
-     CT.sender2[node] = &m_sender2;
-     CT.sender3[node] = &m_sender3;
-     CT.hasSender[node] = true;
-     CT.sender1[node]->send.connect( [this]() {
+  if(!CT.drivers[node]->isSet()){
+     CT.drivers[node]->setSize(3);
+     CT.drivers[node]->addTokenBucket(&m_sender1);
+     CT.drivers[node]->addTokenBucket(&m_sender2);
+     CT.drivers[node]->addTokenBucket(&m_sender3);
+     m_sender1.send.connect( [this]() {
         this->prioritySend();
        } );
-     CT.sender2[node]->send.connect( [this]() {
+     m_sender2.send.connect( [this]() {
         this->prioritySend();
        } );
-     CT.sender3[node]->send.connect( [this]() {
+     m_sender3.send.connect( [this]() {
         this->prioritySend();
         } );
-     forwarder.beforeExpirePendingInterest.connect([this](const pit::Entry& entry){
-       //const std::shared_ptr<nfd::pit::Entry> PE=std::make_shared<nfd::pit::Entry>(entry);
-       this->beforeExpirePendingInterest(entry);
-     });
   }
 }
 
 const Name&
-QosStrategy2::getStrategyName()
+QosStrategy::getStrategyName()
 {
   static Name strategyName( "/localhost/nfd/strategy/qos/%FD%03" );
   return strategyName;
@@ -161,33 +163,34 @@ findEligibleNextHopWithEarliestOutRecord( const Face& inFace, const Interest& in
   return found;
 }
 
+int
+QosStrategy::getPrType(Name pkt){
+   if( pkt.getSubName( 1,1 ).toUri() == "/typeI"  ) {
+      return 0;
+  } else if( pkt.getSubName( 1,1 ).toUri() == "/typeII"  ) {
+       return 1;
+  } else if( pkt.getSubName( 1,1 ).toUri() == "/typeIII"  ) {
+       return 2;
+  } 
+  return 715;
+
+}
+
 void
-QosStrategy2::afterReceiveInterest( const Face& inFace, const Interest& interest,
+QosStrategy::afterReceiveInterest( const Face& inFace, const Interest& interest,
                                         const shared_ptr<pit::Entry>& pitEntry )
 {
   struct QueueItem item( &pitEntry );
-  std::string s = interest.getName().getSubName( 2,1 ).toUri();
-  uint32_t pr_level;
-  double successProb = 0;
-  if( interest.getName().getSubName( 1,1 ).toUri() == "/typeI"  ) {
-    pr_level = 1;
-    successProb = 1;
-  } else if( interest.getName().getSubName( 1,1 ).toUri() == "/typeII"  ) {
-    pr_level = 21;
-    successProb = 1;
-  } else if( interest.getName().getSubName( 1,1 ).toUri() == "/typeIII"  ) {
-    pr_level = 59;    
-        successProb = 0.4;
-        
-  } else {
-    pr_level = 60;
-  }
+  //std::string s = interest.getName().getSubName( 2,1 ).toUri();
+  uint32_t pr_level = getPrType(interest.getName());
 
   item.wireEncode = interest.wireEncode();
   item.packetType = INTEREST;
   item.inface = &inFace;
 
-  if( pr_level != 60  ) {
+  bool  forwarded = false;
+  if( pr_level < m_successReqs.size()  ) {
+    double successProb = m_successReqs[pr_level];
     //get name prefix
     std::string namePrefix = interest.getName().getSubName( 0, interest.getName().size()-1).toUri();
     //std::cout<<namePrefix<<std::endl;
@@ -210,8 +213,10 @@ QosStrategy2::afterReceiveInterest( const Face& inFace, const Interest& interest
 
     double prob = 0;
     bool hasOptions = true;
+    bool first = true;
     unordered_map<uint32_t, int> seenFaces;
-    while (prob < successProb && hasOptions){
+    while (first || (prob < successProb && hasOptions)){
+       if (first) first = false;
        uint32_t bestFaceID = 0;
        double  bestProb = 0;
        const Face* bestFace = 0;
@@ -257,7 +262,12 @@ QosStrategy2::afterReceiveInterest( const Face& inFace, const Interest& interest
           continue;
        }
        item.outface = bestFace;
-       m_tx_queue[bestFaceID].DoEnqueue( item, pr_level );
+       if (m_tx_queue.find(bestFaceID) == m_tx_queue.end()){
+          int size = m_successReqs.size();	       
+          m_tx_queue[bestFaceID].initialize(size);
+       }
+       if(m_tx_queue[bestFaceID].DoEnqueue( item, pr_level ))
+	       forwarded = true;
        prob += bestProb;
        seenFaces[bestFaceID] = 1;
 
@@ -322,7 +332,13 @@ QosStrategy2::afterReceiveInterest( const Face& inFace, const Interest& interest
       Face& outFace = it->getFace();
       uint32_t f = outFace.getId();
       item.outface = &outFace;
-      m_tx_queue[f].DoEnqueue( item, pr_level );
+       if (m_tx_queue.find(f) == m_tx_queue.end()){
+	  int size = m_successReqs.size();
+          m_tx_queue[f].initialize(size);
+       }
+      
+      if(m_tx_queue[f].DoEnqueue( item, pr_level ))
+         forwarded = true;
 
       NFD_LOG_DEBUG( interest << " from=" << inFace.getId()
           << " newPitEntry-to=" << outFace.getId() );
@@ -339,7 +355,12 @@ QosStrategy2::afterReceiveInterest( const Face& inFace, const Interest& interest
       Face& outFace = it->getFace();
       uint32_t f = outFace.getId();
       item.outface = &outFace;
-      m_tx_queue[f].DoEnqueue( item, pr_level );
+       if (m_tx_queue.find(f) == m_tx_queue.end()){
+	  int size = m_successReqs.size();
+          m_tx_queue[f].initialize(size);
+       }
+      if(m_tx_queue[f].DoEnqueue( item, pr_level ))
+         forwarded = true;
 
       NFD_LOG_DEBUG( interest << " from=" << inFace.getId()
           << " retransmit-unused-to=" << outFace.getId() );
@@ -356,7 +377,13 @@ QosStrategy2::afterReceiveInterest( const Face& inFace, const Interest& interest
       Face& outFace = it->getFace();
       uint32_t f = outFace.getId();
       item.outface = &outFace;
-      m_tx_queue[f].DoEnqueue( item, pr_level );
+       if (m_tx_queue.find(f) == m_tx_queue.end()){
+	  int size = m_successReqs.size();
+          m_tx_queue[f].initialize(size);
+       }
+
+      if(m_tx_queue[f].DoEnqueue( item, pr_level ))
+         forwarded = true;
 
       NFD_LOG_DEBUG( interest << " from=" << inFace.getId()
           << " retransmit-retry-to=" << outFace.getId() );
@@ -365,11 +392,17 @@ QosStrategy2::afterReceiveInterest( const Face& inFace, const Interest& interest
     }
   }
 
+
+  if (!forwarded) {
+     this->rejectPendingInterest( pitEntry );
+     rejectedInterests.push_back(interest.getName());
+     return;
+  }
   prioritySend();
 }
 
 void
-QosStrategy2::afterReceiveNack( const Face& inFace, const lp::Nack& nack,
+QosStrategy::afterReceiveNack( const Face& inFace, const lp::Nack& nack,
     const shared_ptr<pit::Entry>& pitEntry )
 {
   return;
@@ -377,18 +410,9 @@ QosStrategy2::afterReceiveNack( const Face& inFace, const lp::Nack& nack,
 
   //std::cout << "***Nack name: " << nack.getInterest().getName() << " Reason: "<<nack.getReason()<< std::endl;
 
-  std::string s = nack.getInterest().getName().getSubName( 2,1 ).toUri();
-  uint32_t pr_level;
+  //std::string s = nack.getInterest().getName().getSubName( 2,1 ).toUri();
 
-  if( nack.getInterest().getName().getSubName( 1,1 ).toUri() == "/typeI"  ) {
-    pr_level = 1;
-  } else if( nack.getInterest().getName().getSubName( 1,1 ).toUri() == "/typeII"  ) {
-    pr_level = 21;
-  } else if( nack.getInterest().getName().getSubName( 1,1 ).toUri() == "/be"  ) {
-    pr_level = 60;
-  } else {
-    pr_level = 60;
-  }
+  uint32_t pr_level = getPrType(nack.getInterest().getName());
 
   item.wireEncode = nack.getInterest().wireEncode();
   item.packetType = NACK;
@@ -398,7 +422,7 @@ QosStrategy2::afterReceiveNack( const Face& inFace, const lp::Nack& nack,
 }
 
 void
-QosStrategy2::afterReceiveData( const shared_ptr<pit::Entry>& pitEntry,
+QosStrategy::afterReceiveData( const shared_ptr<pit::Entry>& pitEntry,
                            const Face& inFace, const Data& data )
 {
   struct QueueItem item( &pitEntry );
@@ -409,18 +433,8 @@ QosStrategy2::afterReceiveData( const shared_ptr<pit::Entry>& pitEntry,
 
   this->beforeSatisfyInterest( pitEntry, inFace, data );
 
-  std::string s = data.getName().getSubName( 2,1 ).toUri();
-  uint32_t pr_level;
-
-  if( data.getName().getSubName( 1,1 ).toUri() == "/typeI"  ) {
-    pr_level = 1;
-  } else if( data.getName().getSubName( 1,1 ).toUri() == "/typeII"  ) {
-    pr_level = 21;
-  } else if( data.getName().getSubName( 1,1 ).toUri() == "/be"  ) {
-    pr_level = 60;
-  } else {
-    pr_level = 60;
-  }
+  //std::string s = data.getName().getSubName( 2,1 ).toUri();
+  uint32_t pr_level = getPrType(data.getName());
 
   item.wireEncode = data.wireEncode();
   item.packetType = DATA;
@@ -442,6 +456,10 @@ QosStrategy2::afterReceiveData( const shared_ptr<pit::Entry>& pitEntry,
   for( const Face* pendingDownstream : pendingDownstreams ) {
     uint32_t f = ( *pendingDownstream ).getId();
     item.outface = pendingDownstream;
+       if (m_tx_queue.find(f) == m_tx_queue.end()){
+	  int size = m_successReqs.size();
+          m_tx_queue[f].initialize(size);
+       }
     m_tx_queue[f].DoEnqueue( item, pr_level );
 
   }
@@ -450,8 +468,12 @@ QosStrategy2::afterReceiveData( const shared_ptr<pit::Entry>& pitEntry,
 }
 
 void
-QosStrategy2::prioritySend()
+QosStrategy::prioritySend()
 {
+  if(!driverConnected){
+     setUp();
+     driverConnected = true;
+  }
   ns3::Ptr<ns3::Node> node= ns3::NodeContainer::GetGlobal().Get( ns3::Simulator::GetContext() );
   Interest interest;
   Data data;
@@ -469,32 +491,25 @@ QosStrategy2::prioritySend()
    uint32_t rate =25;
    if(device != NULL){
         rate = ns3::DynamicCast<ns3::QueueBase>(ns3::DynamicCast<ns3::PointToPointNetDevice>( device->GetNetDevice())->GetQueue())->GetNPackets() ;
-        //std::cout<<"Link size "<< rate<<std::endl;
     }
     while (!m_tx_queue[itt->first].IsEmpty() && !tokenwait && rate <25) {
 
-      double token1 = CT.sender1[node->GetId()]->m_capacity;
-      double token2 = CT.sender2[node->GetId()]->m_capacity;
-      double token3 = CT.sender3[node->GetId()]->m_capacity;
+      int size = CT.drivers[node->GetId()]->getSize();
+      std::vector<TokenBucket*> buckets;
+      std::vector<double> tokens; 
+      for (int i = 0; i < size; i++){
+         buckets.push_back(CT.drivers[node->GetId()]->getBucket(i));
+	 tokens.push_back(buckets[i]->m_capacity);
+	 if( buckets[i]->m_tokens.find( itt->first ) != buckets[i]->m_tokens.end() )
+            tokens[i] = buckets[i]->m_tokens[itt->first];
+	 //std::cout<<tokens[i]<<" ";
+      }
 
-      if( CT.sender1[node->GetId()]->m_tokens.find( itt->first ) != CT.sender1[node->GetId()]->m_tokens.end() )
-        token1 = CT.sender1[node->GetId()]->m_tokens[itt->first];
-      if( CT.sender2[node->GetId()]->m_tokens.find( itt->first ) != CT.sender2[node->GetId()]->m_tokens.end() )
-        token2 = CT.sender2[node->GetId()]->m_tokens[itt->first];
-      if( CT.sender3[node->GetId()]->m_tokens.find( itt->first ) != CT.sender3[node->GetId()]->m_tokens.end() )
-        token3 = CT.sender3[node->GetId()]->m_tokens[itt->first];
-
-      int choice = m_tx_queue[itt->first].SelectQueueToSend( token1, token2, token3 );
+      //std::cout<<std::endl;
+      int choice = m_tx_queue[itt->first].SelectQueueToSend( tokens );
 
       if( choice != -1 ) {
-        TokenBucket *sender;
-
-        if( choice == 0 ) {
-          sender = CT.sender1[node->GetId()];
-        } else if( choice == 1 ){ sender = CT.sender2[node->GetId()];
-        } else {
-          sender = CT.sender3[node->GetId()];
-        }
+        TokenBucket *sender = buckets[choice];
 
         sender->hasFaces = true;
         sender->consumeToken( TOKEN_REQUIRED, itt->first );
@@ -529,11 +544,12 @@ QosStrategy2::prioritySend()
             //std::cout<<"prioritySend( Invalid Type )\n";
             break;
         }
-      } else {
+      } 
+      else {
 
-        CT.sender1[node->GetId()]->m_need[itt->first] =  m_tx_queue[itt->first].tokenReqHig();
-        CT.sender2[node->GetId()]->m_need[itt->first] =  m_tx_queue[itt->first].tokenReqMid();
-        CT.sender3[node->GetId()]->m_need[itt->first] =  m_tx_queue[itt->first].tokenReqLow();
+        for (int i = 0; i < size; i++){
+	   buckets[i]->m_need[itt->first] =  m_tx_queue[itt->first].tokenReq(i);
+	}
 
         tokenwait = true;
       }
@@ -544,73 +560,29 @@ QosStrategy2::prioritySend()
 }
 
 void
-QosStrategy2::prioritySendData( const shared_ptr<pit::Entry>& pitEntry,
+QosStrategy::prioritySendData( const shared_ptr<pit::Entry>& pitEntry,
                             const Face& inFace, const Data& data, const Face& outFace )
 {
   this->sendData( pitEntry, data, outFace );
 }
 
 void
-QosStrategy2::prioritySendNack( const shared_ptr<pit::Entry>& pitEntry,
+QosStrategy::prioritySendNack( const shared_ptr<pit::Entry>& pitEntry,
                             const Face& inFace, const lp::Nack& nack )
 {
   this->processNack( inFace, nack, pitEntry );
 }
 
 void
-QosStrategy2::prioritySendInterest( const shared_ptr<pit::Entry>& pitEntry,
+QosStrategy::prioritySendInterest( const shared_ptr<pit::Entry>& pitEntry,
                             const Face& inFace, const Interest& interest, const Face& outFace )
 {
-  /*
-  const fib::Entry& fibEntry = this->lookupFib( *pitEntry );
-  const fib::NextHopList& nexthops = fibEntry.getNextHops();
-  int nEligibleNextHops = 0;
-  bool isSuppressed = false;
-
-  for( const auto& nexthop : nexthops ) {
-    Face& outFace = nexthop.getFace();
-    RetxSuppressionResult suppressResult = m_retxSuppression.decidePerUpstream( *pitEntry, outFace );
-
-    if( suppressResult == RetxSuppressionResult::SUPPRESS ) {
-      NFD_LOG_DEBUG( interest << " from=" << inFace.getId()
-          << "to=" << outFace.getId() << " suppressed" );
-      isSuppressed = true;
-      continue;
-    }
-
-    if( ( outFace.getId() == inFace.getId() && outFace.getLinkType() != ndn::nfd::LINK_TYPE_AD_HOC ) ||
-        wouldViolateScope( inFace, interest, outFace ) ) {
-      continue;
-    }
-    */
-
-    //Face& outface = outFace;
-
     this->sendInterest( pitEntry, *const_pointer_cast<Face>( outFace.shared_from_this() ), interest );
-
-    /*
-    NFD_LOG_DEBUG( interest << " from=" << inFace.getId()
-        << " pitEntry-to=" << outFace.getId() );
-    if( suppressResult == RetxSuppressionResult::FORWARD ) {
-      m_retxSuppression.incrementIntervalForOutRecord( *pitEntry->getOutRecord( outFace ) );
-    }
-
-    ++nEligibleNextHops;
-  }
-
-  if( nEligibleNextHops == 0 && !isSuppressed ) {
-    NFD_LOG_DEBUG( interest << " from=" << inFace.getId() << " noNextHop" );
-    lp::NackHeader nackHeader;
-    nackHeader.setReason( lp::NackReason::NO_ROUTE );
-    //this->sendNack( pitEntry, inFace, nackHeader );
-    this->rejectPendingInterest( pitEntry );
-  }
-  */
 }
 
 
 void
-QosStrategy2::initialize(std::string name, const shared_ptr<pit::Entry>& pitEntry)
+QosStrategy::initialize(std::string name, const shared_ptr<pit::Entry>& pitEntry)
 {
    FaceStats newPrefix;
    m_faceStats.insert({name, newPrefix});
@@ -642,7 +614,7 @@ QosStrategy2::initialize(std::string name, const shared_ptr<pit::Entry>& pitEntr
  * @return     The face prob.
  */
 double
-QosStrategy2::getFaceProb(std::string namePrefix, uint32_t f,  bool rel)
+QosStrategy::getFaceProb(std::string namePrefix, uint32_t f,  bool rel)
 {
     if(!m_faceStats[namePrefix].bootstrapped) return 0;
     double prob;
@@ -661,7 +633,7 @@ QosStrategy2::getFaceProb(std::string namePrefix, uint32_t f,  bool rel)
 }
 
 void
-QosStrategy2::beforeSatisfyInterest(const shared_ptr<pit::Entry>& pitEntry,
+QosStrategy::beforeSatisfyInterest(const shared_ptr<pit::Entry>& pitEntry,
                                 const Face& inFace, const Data& data)
 {
    std::string namePrefix = data.getName().getSubName( 0, data.getName().size()-2).toUri();
@@ -683,14 +655,15 @@ QosStrategy2::beforeSatisfyInterest(const shared_ptr<pit::Entry>& pitEntry,
 }
 
 void
-QosStrategy2::beforeExpirePendingInterest (const pit::Entry& pitEntry)
+QosStrategy::beforeExpirePendingInterest (const pit::Entry& pitEntry)
 {
+   if(wasRejected(pitEntry.getName()))
+           return;
     std::string namePrefix = pitEntry.getName().getSubName( 0,pitEntry.getName().size()-2).toUri();
     //check if initilized 
     if(m_faceStats.find(namePrefix) == m_faceStats.end()){
 	return;
     }
-
    double beta = 0.833;
 
    for (const auto& out : pitEntry.getOutRecords()) {

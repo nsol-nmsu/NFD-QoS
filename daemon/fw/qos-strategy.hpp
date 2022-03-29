@@ -67,6 +67,9 @@ public:
   static const Name&
   getStrategyName();
 
+  virtual void
+  setUp();
+
   void
   afterReceiveInterest( const Face& inFace, const Interest& interest,
       const shared_ptr<pit::Entry>& pitEntry ) override;
@@ -104,24 +107,77 @@ public:
    *  \param interest The interest packet we will be forwarding.
    *  \param outFace The outgoing interface.
    */
+  double
+  getFaceProb(std::string namePrefix, uint32_t f, bool rel);
+
+
   void
   prioritySendInterest( const shared_ptr<pit::Entry>& pitEntry,
       const Face& inFace, const Interest& interest, const Face& outFace );
+
+  void
+  beforeSatisfyInterest(const shared_ptr<pit::Entry>& pitEntry,
+                    const Face& inFace, const Data& data) override;
+
+  void
+  beforeExpirePendingInterest (const pit::Entry& entry);
+  
 
   /** \brief Dequeue all eligible packets from respective queues and forward them.
    */
   void
   prioritySend();
 
+  //void
+  //bootstrap(std::string name);
+
+  void
+  initialize(std::string name, const shared_ptr<pit::Entry>& pitEntry);
+
+  virtual int
+  getPrType(Name pkt);
+
+  void 
+  setSuccessReqs(vector<double> reqs){
+     m_successReqs = reqs;	  
+  };
+
+
+  bool wasRejected(Name interest){
+   for (auto i = rejectedInterests.begin(); i != rejectedInterests.end(); i++){
+      if (*i == interest){
+         rejectedInterests.erase(i);
+	 return true;
+      }
+   }
+   return false;
+	  
+  };
+protected:
+  // set of ewma statistics for each face
+  typedef struct {
+    unordered_map<uint32_t, double> absLossRate; 
+    unordered_map<uint32_t, double> relaLossRate; 
+    double latency = 0;                 //latency stats (ewma mean - Mu)
+    double latencyVariance = 0;         //variance for latency - Sigma
+    bool bootstrapped = 0;		    //used to bootstrap latency variance and ewma
+    uint32_t totalPacketsSent = 0;	    //used to keep track of bootstrapping statistics(need 3 to build stats)
+  } FaceStats;
+
+
 private:
 
   unordered_map<uint32_t, NdnPriorityTxQueue> m_tx_queue; //< @brief Hashtable that maps interface to their respective queues.
   friend ProcessNackTraits<QosStrategy>;
   RetxSuppressionExponential m_retxSuppression;
+  std::vector<double> m_successReqs;  
   TokenBucket m_sender1; //< @brief Used to provide references to high priority token buckets to application layer.
   TokenBucket m_sender2; //< @brief Used to provide references to medium priority token buckets to application layer.
   TokenBucket m_sender3; //< @brief Used to provide references to low priority token buckets to application layer.
   int packetsDropped = 0;
+  unordered_map<std::string, FaceStats> m_faceStats;
+  bool driverConnected = false;
+  std::vector<Name> rejectedInterests;
 
 PUBLIC_WITH_TESTS_ELSE_PRIVATE:
   static const time::milliseconds RETX_SUPPRESSION_INITIAL;

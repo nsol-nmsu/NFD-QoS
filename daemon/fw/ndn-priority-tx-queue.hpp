@@ -56,6 +56,9 @@ public:
   //constructor
   NdnPriorityTxQueue();
 
+
+  void
+  initialize(int queues);
   /** \brief Find flow rate of the given queue.
    *  \param queue The queue form which we will obtain the flow rate.
    */
@@ -75,7 +78,7 @@ public:
    *  \param lowTokens The number of tokens the low priorty queue has.
    */
   int
-  SelectQueueToSend( double highTokens, double midTokens, double lowTokens );
+  SelectQueueToSend( vector<double> tokens );
 
   /** \brief Push the given packet and corresponding meta info onto a queue.
    *  \param item The packet and its metainfo, incoming face, pit entry, etc.
@@ -98,23 +101,12 @@ public:
   /** \brief Tokens required for high priority queue. 
    */
   int
-  tokenReqHig();
-
-  /** \brief Tokens required for medium priority queue.
-   */
-  int
-  tokenReqMid();
-
-  /** \brief Tokens required for low priority queue.
-   */  
-  int
-  tokenReqLow();
+  tokenReq(int buckets);
 
 public:
 
-  QosQueue m_highPriorityQueue; //< @brief High priority Queue. 
-  QosQueue m_mediumPriorityQueue; //< @brief Medium priority Queue.
-  QosQueue m_lowPriorityQueue;//< @brief Low priority Queue.
+  std::vector<QosQueue> m_priorityQueues; //< @brief Priority Queues.
+  int totalQueues;
 };
 
 }// namespace fw
