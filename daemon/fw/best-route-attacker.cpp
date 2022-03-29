@@ -23,7 +23,7 @@
  * NFD, e.g., in COPYING.md file.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include "best-route-strategy-attacker.hpp"
+#include "best-route-attacker.hpp"
 #include "algorithm.hpp"
 #include "core/logger.hpp"
 #include "ns3/simulator.h"
